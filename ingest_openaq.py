@@ -3,6 +3,10 @@ import requests, time
 import pandas as pd
 from pyspark.sql import SparkSession
 from datetime import datetime, timezone
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 spark = SparkSession.builder.getOrCreate()
 url = "https://api.openaq.org/v3/sensors/25372/hours"
