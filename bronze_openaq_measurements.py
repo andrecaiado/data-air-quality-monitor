@@ -19,9 +19,9 @@ spark = SparkSession.builder.appName("Bronze_OpenAQ_Measurements").getOrCreate()
 # --------------------------------------
 # Configurations
 # --------------------------------------
-DATABASE = "airq"
-BRONZE_TABLE = f"{DATABASE}.bronze_openaq_raw"
-OPENAQ_BASE = "https://api.openaq.org/v3"
+DATABASE = os.getenv("DATABASE", "airq")
+BRONZE_TABLE = f"{DATABASE}.bronze_openaq_measurements"
+OPENAQ_BASE = os.getenv("OPENAQ_V3_BASE", "https://api.openaq.org/v3")
 HOURS_BACK = 4  # Fetch last 4 hours of data
 PAGE_LIMIT = 1000  # API pagination size
 BBOX_PT = "-9.6,36.8,-6.0,42.2"  # roughly Portugal
