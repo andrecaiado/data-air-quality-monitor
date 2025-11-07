@@ -155,45 +155,46 @@ print(f"🔍 Retrieved {len(sensors)} sensors to ingest.")
 # print(f"🔍 Retrieved {len(sensors)} sensors to ingest.")
 
 # --------------------------------------
-# Step 4: Ingest per sensor
+# Step 4: Ingest per location per sensor
 # --------------------------------------
 batch_id = str(uuid.uuid4())
 ingestion_time = datetime.now(timezone.utc)
 read_sensors = 0
 
 total_rows = 0
-for sensor in sensors:
-    if read_sensors >= 5:
-        break  # limit to first 5 sensors for testing
+for location in locations_pt:
+    for sensor in location.get("sensors", []):
+        if read_sensors >= 5:
+            break  # limit to first 5 sensors for testing
 
-    sensor_id = sensor["id"]
-    location_id = sensor.get("locationId")
-    parameter = sensor.get("parameter", {}).get("name") if isinstance(sensor.get("parameter"), dict) else sensor.get("parameter")
+        sensor_id = sensor["id"]
+        location_id = location.get("id")
+        parameter = sensor.get("parameter", {}).get("name") if isinstance(sensor.get("parameter"), dict) else sensor.get("parameter")
 
-    measurements = fetch_measurements(sensor_id, date_from, date_to)
-    read_sensors += 1
-    if not measurements:
-        continue
+        measurements = fetch_measurements(sensor_id, date_from, date_to)
+        read_sensors += 1
+        if not measurements:
+            continue
 
-    rows_fetched = len(measurements)
-    print(f"➡️ Ingesting {rows_fetched} measurements for sensor {sensor_id} (location {location_id}, parameter {parameter})")
+        rows_fetched = len(measurements)
+        print(f"➡️ Ingesting {rows_fetched} measurements for sensor {sensor_id} (location {location_id}, parameter {parameter})")
 
-    # Create single row with all measurements as JSON array
-    row = (
-        sensor_id,
-        location_id,
-        parameter,
-        batch_id,
-        ingestion_time.isoformat(),
-        date_from.isoformat(),
-        date_to.isoformat(),
-        rows_fetched,
-        json.dumps(measurements)  # All measurements as JSON array
-    )
-    
-    df = spark.createDataFrame([row], BRONZE_SCHEMA)
-    df.write.format("delta").mode("append").saveAsTable(BRONZE_TABLE)
-    total_rows += 1
+        # Create single row with all measurements as JSON array
+        row = (
+            sensor_id,
+            location_id,
+            parameter,
+            batch_id,
+            ingestion_time.isoformat(),
+            date_from.isoformat(),
+            date_to.isoformat(),
+            rows_fetched,
+            json.dumps(measurements)  # All measurements as JSON array
+        )
+        
+        df = spark.createDataFrame([row], BRONZE_SCHEMA)
+        df.write.format("delta").mode("append").saveAsTable(BRONZE_TABLE)
+        total_rows += 1
 
 print(f"✅ Ingestion complete — {total_rows} sensor batches written to {BRONZE_TABLE}")
 
