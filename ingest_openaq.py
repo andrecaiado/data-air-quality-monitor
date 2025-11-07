@@ -23,7 +23,7 @@ spark = SparkSession.builder.appName("OpenAQ_v3_Ingestion").getOrCreate()
 DATABASE = "airq"
 BRONZE_TABLE = f"{DATABASE}.bronze_openaq_raw"
 OPENAQ_BASE = "https://api.openaq.org/v3"
-HOURS_BACK = 10  # Fetch last 10 hours of data
+HOURS_BACK = 4  # Fetch last 4 hours of data
 PAGE_LIMIT = 1000  # API pagination size
 BBOX_PT = "-9.6,36.8,-6.0,42.2"  # roughly Portugal
 HEADERS = {'x-api-key': os.getenv("OPENAQ_API_KEY", "")}
@@ -51,10 +51,24 @@ if not spark.catalog.tableExists(BRONZE_TABLE):
     print(f"✅ Created empty Delta table: {BRONZE_TABLE}")
 
 # --------------------------------------
+# Helper: Fetch last ingestion date_to
+# --------------------------------------
+def get_last_ingestion_date_to():
+    """Fetches the last ingestion date_to from the bronze table."""
+    df = spark.sql(f"""
+        SELECT MAX(date_to) AS last_date_to
+        FROM {BRONZE_TABLE}
+    """)
+    row = df.collect()[0]
+    if row and row['last_date_to']:
+        return datetime.fromisoformat(row['last_date_to'])
+    return None
+
+# --------------------------------------
 # Define ingestion window
 # --------------------------------------
 date_to = datetime.now(timezone.utc)
-date_from = date_to - timedelta(hours=HOURS_BACK)
+date_from = get_last_ingestion_date_to() if get_last_ingestion_date_to() is not None else date_to - timedelta(hours=HOURS_BACK)
 
 print(f"📅 Fetching data from {date_from.isoformat()} to {date_to.isoformat()}")
 
@@ -75,7 +89,7 @@ def fetch_measurements(sensor_id, start, end):
             f"&datetime_from={start_formatted}&datetime_to={end_formatted}"
         )
         headers = HEADERS
-        time.sleep(1.05)  # be nice to the API
+        time.sleep(1.05)  # # added delay to be nice to the API and avoid rate limits
         r = requests.get(url, headers=headers)
         if r.status_code != 200:
             print(f"⚠️ Failed for sensor {sensor_id}: {r.status_code}")
@@ -108,7 +122,7 @@ def fetch_locations(bbox):
             f"?bbox={bbox}&limit={PAGE_LIMIT}&page={page}"
         )
         headers = HEADERS
-        time.sleep(1.05)  # be nice to the API
+        time.sleep(1.05)  # added delay to be nice to the API and avoid rate limits
         r = requests.get(url, headers=headers)
         if r.status_code != 200:
             print(f"⚠️ Failed to fetch locations for bbox {bbox}: {r.status_code}")
@@ -137,40 +151,25 @@ locations = fetch_locations(BBOX_PT)
 # Step 2: Filter locations by country code PT
 # --------------------------------------
 locations_pt = [loc for loc in locations if loc.get("country", {}).get("code") == "PT"]
-print(f"🔍 Found {len(locations_pt)} locations in Portugal")
+sensors_pt_count = sum(len(loc.get("sensors", [])) for loc in locations_pt)
+print(f"🔍 Found {len(locations_pt)} locations in Portugal with {sensors_pt_count} sensors")
 
 # --------------------------------------
-# Step 3: Fetch sensors list from locations
-# -------------------------------------- 
-sensors = [sensor for location in locations for sensor in location.get("sensors", [])]
-print(f"🔍 Retrieved {len(sensors)} sensors to ingest.")
-
-# --------------------------------------
-# Step 1: Fetch sensors list
-# --------------------------------------
-# sensors_url = f"{OPENAQ_BASE}/sensors?limit=50&page=1"  # adjust limit/pages if needed
-# r = requests.get(sensors_url)
-# sensors = r.json().get("results", [])
-
-# print(f"🔍 Retrieved {len(sensors)} sensors to ingest.")
-
-# --------------------------------------
-# Step 4: Ingest per location per sensor
+# Step 3: Ingest per location per sensor
 # --------------------------------------
 batch_id = str(uuid.uuid4())
 ingestion_time = datetime.now(timezone.utc)
 read_sensors = 0
 
 total_rows = 0
+read_sensors = 0
 for location in locations_pt:
     for sensor in location.get("sensors", []):
-        if read_sensors >= 5:
-            break  # limit to first 5 sensors for testing
-
         sensor_id = sensor["id"]
         location_id = location.get("id")
         parameter = sensor.get("parameter", {}).get("name") if isinstance(sensor.get("parameter"), dict) else sensor.get("parameter")
 
+        print(f"\n🔍 Fetching data for sensor {sensor_id} ({read_sensors + 1} of {sensors_pt_count})")
         measurements = fetch_measurements(sensor_id, date_from, date_to)
         read_sensors += 1
         if not measurements:
