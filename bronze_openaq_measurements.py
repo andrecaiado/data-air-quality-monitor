@@ -6,7 +6,6 @@ import requests
 from pyspark.sql import SparkSession
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
-from pyspark.sql.functions import lit
 from pyspark.sql.types import *
 
 # Load environment variables from .env file
@@ -15,7 +14,7 @@ load_dotenv()
 # --------------------------------------
 # Spark setup
 # --------------------------------------
-spark = SparkSession.builder.appName("OpenAQ_v3_Ingestion").getOrCreate()
+spark = SparkSession.builder.appName("Bronze_OpenAQ_Measurements").getOrCreate()
 
 # --------------------------------------
 # Configurations

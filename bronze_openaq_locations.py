@@ -15,7 +15,7 @@ load_dotenv()
 # --------------------------------------
 # Spark setup
 # --------------------------------------
-spark = SparkSession.builder.appName("OpenAQ_v3_Ingestion").getOrCreate()
+spark = SparkSession.builder.appName("Bronze_OpenAQ_Locations").getOrCreate()
 
 # --------------------------------------
 # Configurations
