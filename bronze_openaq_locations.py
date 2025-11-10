@@ -1,4 +1,3 @@
-# Load environment variables from .env file
 import datetime
 import os
 import time
@@ -7,9 +6,10 @@ import requests
 import json
 from dotenv import load_dotenv
 from pyspark.sql import SparkSession
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pyspark.sql.types import *
 
+# Load environment variables from .env file
 load_dotenv()
 
 # --------------------------------------
