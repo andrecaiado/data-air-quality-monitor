@@ -14,14 +14,14 @@ load_dotenv()
 # --------------------------------------
 # Spark setup
 # --------------------------------------
-spark = SparkSession.builder.appName("Bronze_OpenAQ_Measurements").getOrCreate()
+spark = SparkSession.builder.appName("Ingest_Bronze_Measurements").getOrCreate()
 
 # --------------------------------------
 # Configurations
 # --------------------------------------
 DATABASE = os.getenv("DATABASE", "airq")
-BRONZE_TABLE = f"{DATABASE}.bronze_openaq_measurements"
-OPENAQ_BASE = os.getenv("OPENAQ_V3_BASE", "https://api.openaq.org/v3")
+BRONZE_TABLE_MEASUREMENTS = f"{DATABASE}.bronze_measurements_batches"
+OPENAQ_API_BASE_URL = os.getenv("OPENAQ_API_V3_BASE_URL", "https://api.openaq.org/v3")
 HOURS_BACK = 4  # Fetch last 4 hours of data
 PAGE_LIMIT = 1000  # API pagination size
 BBOX_PT = "-9.6,36.8,-6.0,42.2"  # roughly Portugal
@@ -33,7 +33,7 @@ HEADERS = {'x-api-key': os.getenv("OPENAQ_API_KEY", "")}
 spark.sql(f"CREATE DATABASE IF NOT EXISTS {DATABASE}")
 
 # Define bronze table schema
-BRONZE_SCHEMA = StructType([
+SCHEMA_BRONZE_BRONZE_TABLE_MEASUREMENTS = StructType([
     StructField("sensor_id", IntegerType(), True),
     StructField("location_id", IntegerType(), True),
     StructField("parameter", StringType(), True),
@@ -45,9 +45,9 @@ BRONZE_SCHEMA = StructType([
     StructField("api_payload", StringType(), True)
 ])
 
-if not spark.catalog.tableExists(BRONZE_TABLE):
-    spark.createDataFrame([], BRONZE_SCHEMA).write.format("delta").mode("overwrite").saveAsTable(BRONZE_TABLE)
-    print(f"✅ Created empty Delta table: {BRONZE_TABLE}")
+if not spark.catalog.tableExists(BRONZE_TABLE_MEASUREMENTS):
+    spark.createDataFrame([], SCHEMA_BRONZE_BRONZE_TABLE_MEASUREMENTS).write.format("delta").mode("overwrite").saveAsTable(BRONZE_TABLE_MEASUREMENTS)
+    print(f"✅ Created empty Delta table: {BRONZE_TABLE_MEASUREMENTS}")
 
 # --------------------------------------
 # Helper: Fetch last ingestion date_to
@@ -56,7 +56,7 @@ def get_last_ingestion_date_to():
     """Fetches the last ingestion date_to from the bronze table."""
     df = spark.sql(f"""
         SELECT MAX(date_to) AS last_date_to
-        FROM {BRONZE_TABLE}
+        FROM {BRONZE_TABLE_MEASUREMENTS}
     """)
     row = df.collect()[0]
     if row and row['last_date_to']:
@@ -83,7 +83,7 @@ def fetch_measurements(sensor_id, start, end):
 
     while True:
         url = (
-            f"{OPENAQ_BASE}/sensors/{sensor_id}/hours"
+            f"{OPENAQ_API_BASE_URL}/sensors/{sensor_id}/hours"
             f"?limit={PAGE_LIMIT}&page={page}"
             f"&datetime_from={start_formatted}&datetime_to={end_formatted}"
         )
@@ -117,7 +117,7 @@ def fetch_locations(bbox):
 
     while True:
         url = (
-            f"{OPENAQ_BASE}/locations"
+            f"{OPENAQ_API_BASE_URL}/locations"
             f"?bbox={bbox}&limit={PAGE_LIMIT}&page={page}"
         )
         headers = HEADERS
@@ -190,11 +190,11 @@ for location in locations_pt:
             json.dumps(measurements)  # All measurements as JSON array
         )
         
-        df = spark.createDataFrame([row], BRONZE_SCHEMA)
-        df.write.format("delta").mode("append").saveAsTable(BRONZE_TABLE)
+        df = spark.createDataFrame([row], SCHEMA_BRONZE_BRONZE_TABLE_MEASUREMENTS)
+        df.write.format("delta").mode("append").saveAsTable(BRONZE_TABLE_MEASUREMENTS)
         total_rows += 1
 
-print(f"✅ Ingestion complete — {total_rows} sensor batches written to {BRONZE_TABLE}")
+print(f"✅ Ingestion complete — {total_rows} sensor batches written to {BRONZE_TABLE_MEASUREMENTS}")
 
 # Stop Spark session to avoid Python 3.13 threading cleanup warnings
 spark.stop()

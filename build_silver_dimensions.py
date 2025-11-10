@@ -10,15 +10,15 @@ load_dotenv()
 # --------------------------------------
 # Spark setup
 # --------------------------------------
-spark = SparkSession.builder.appName("Silver_Locations").getOrCreate()
+spark = SparkSession.builder.appName("Build_Silver_Dimensions").getOrCreate()
 
 # --------------------------------------
 # Configurations
 # --------------------------------------
 DATABASE = os.getenv("DATABASE", "airq")
-BRONZE_TABLE_LOCATIONS = f"{DATABASE}.bronze_openaq_locations"
-SILVER_TABLE_LOCATIONS = f"{DATABASE}.silver_locations"
-SILVER_TABLE_SENSORS = f"{DATABASE}.silver_sensors"
+BRONZE_TABLE_LOCATIONS = f"{DATABASE}.bronze_locations_snapshots"
+DIM_TABLE_LOCATIONS = f"{DATABASE}.dim_locations"
+DIM_TABLE_SENSORS = f"{DATABASE}.dim_sensors"
 
 # --------------------------------------
 # Create database & silver tables if missing
@@ -26,7 +26,7 @@ SILVER_TABLE_SENSORS = f"{DATABASE}.silver_sensors"
 spark.sql(f"CREATE DATABASE IF NOT EXISTS {DATABASE}")
 
 # Define locations silver table schema
-SILVER_SCHEMA_LOCATIONS = StructType([
+SCHEMA_DIM_TABLE_LOCATIONS = StructType([
     StructField("location_id", IntegerType(), True),
     StructField("name", StringType(), True),
     StructField("locality", StringType(), True),
@@ -39,12 +39,12 @@ SILVER_SCHEMA_LOCATIONS = StructType([
     StructField("dim_ingested_at", TimestampType(), True)
 ])
 
-if not spark.catalog.tableExists(SILVER_TABLE_LOCATIONS):
-    spark.createDataFrame([], SILVER_SCHEMA_LOCATIONS).write.format("delta").mode("overwrite").saveAsTable(SILVER_TABLE_LOCATIONS)
-    print(f"✅ Created empty Delta table: {SILVER_TABLE_LOCATIONS}")
+if not spark.catalog.tableExists(DIM_TABLE_LOCATIONS):
+    spark.createDataFrame([], SCHEMA_DIM_TABLE_LOCATIONS).write.format("delta").mode("overwrite").saveAsTable(DIM_TABLE_LOCATIONS)
+    print(f"✅ Created empty Delta table: {DIM_TABLE_LOCATIONS}")
 
 # Define sensors silver table schema
-SILVER_SCHEMA_SENSORS = StructType([
+SCHEMA_DIM_TABLE_SENSORS = StructType([
     StructField("sensor_id", IntegerType(), True),
     StructField("name", StringType(), True),
     StructField("parameter_id", IntegerType(), True),
@@ -56,9 +56,9 @@ SILVER_SCHEMA_SENSORS = StructType([
     StructField("dim_ingested_at", TimestampType(), True)
 ])
 
-if not spark.catalog.tableExists(SILVER_TABLE_SENSORS):
-    spark.createDataFrame([], SILVER_SCHEMA_SENSORS).write.format("delta").mode("overwrite").saveAsTable(SILVER_TABLE_SENSORS)
-    print(f"✅ Created empty Delta table: {SILVER_TABLE_SENSORS}")
+if not spark.catalog.tableExists(DIM_TABLE_SENSORS):
+    spark.createDataFrame([], SCHEMA_DIM_TABLE_SENSORS).write.format("delta").mode("overwrite").saveAsTable(DIM_TABLE_SENSORS)
+    print(f"✅ Created empty Delta table: {DIM_TABLE_SENSORS}")
 
 # --------------------------------------
 # Helper: Load locations and sensors from bronze table
@@ -126,11 +126,11 @@ if not location_rows:
     spark.stop()
     exit(0)
 
-df = spark.createDataFrame(location_rows, SILVER_SCHEMA_LOCATIONS)
+df = spark.createDataFrame(location_rows, SCHEMA_DIM_TABLE_LOCATIONS)
 df.createOrReplaceTempView("loaded_locations")
-print(f"🔍 Upserting {len(location_rows)} locations into {SILVER_TABLE_LOCATIONS}")
+print(f"🔍 Upserting {len(location_rows)} locations into {DIM_TABLE_LOCATIONS}")
 spark.sql(f"""
-MERGE INTO {SILVER_TABLE_LOCATIONS} AS target
+MERGE INTO {DIM_TABLE_LOCATIONS} AS target
 USING loaded_locations AS src
 ON target.location_id = src.location_id
 WHEN MATCHED AND target.last_updated_utc <> src.last_updated_utc
@@ -154,17 +154,17 @@ WHEN NOT MATCHED THEN INSERT (
     src.bronze_ingestion_time, current_timestamp()
 )
 """)
-print(f"✅ Upserted {len(location_rows)} locations into {SILVER_TABLE_LOCATIONS}")
+print(f"✅ Upserted {len(location_rows)} locations into {DIM_TABLE_LOCATIONS}")
 
 # --------------------------------------
 # Step 3: Upsert sensors into silver table
 # --------------------------------------
 if sensor_rows:
-    df = spark.createDataFrame(sensor_rows, SILVER_SCHEMA_SENSORS)
+    df = spark.createDataFrame(sensor_rows, SCHEMA_DIM_TABLE_SENSORS)
     df.createOrReplaceTempView("loaded_sensors")
-    print(f"🔍 Upserting {len(sensor_rows)} sensors into {SILVER_TABLE_SENSORS}")
+    print(f"🔍 Upserting {len(sensor_rows)} sensors into {DIM_TABLE_SENSORS}")
     spark.sql(f"""
-    MERGE INTO {SILVER_TABLE_SENSORS} AS target
+    MERGE INTO {DIM_TABLE_SENSORS} AS target
     USING loaded_sensors AS src
     ON target.sensor_id = src.sensor_id
     WHEN MATCHED THEN UPDATE SET
@@ -184,7 +184,7 @@ if sensor_rows:
         src.parameter_display_name, src.location_id, src.bronze_ingestion_time, current_timestamp()
     )
     """)
-    print(f"✅ Upserted {len(sensor_rows)} sensors into {SILVER_TABLE_SENSORS}")
+    print(f"✅ Upserted {len(sensor_rows)} sensors into {DIM_TABLE_SENSORS}")
 
 # Stop Spark session to avoid Python 3.13 threading cleanup warnings
 spark.stop()

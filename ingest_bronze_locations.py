@@ -15,14 +15,14 @@ load_dotenv()
 # --------------------------------------
 # Spark setup
 # --------------------------------------
-spark = SparkSession.builder.appName("Bronze_OpenAQ_Locations").getOrCreate()
+spark = SparkSession.builder.appName("Ingest_Bronze_Locations").getOrCreate()
 
 # --------------------------------------
 # Configurations
 # --------------------------------------
 DATABASE = os.getenv("DATABASE", "airq")
-BRONZE_TABLE = f"{DATABASE}.bronze_openaq_locations"
-OPENAQ_BASE = os.getenv("OPENAQ_V3_BASE", "https://api.openaq.org/v3")
+BRONZE_TABLE_LOCATIONS = f"{DATABASE}.bronze_locations_snapshots"
+OPENAQ_API_BASE_URL = os.getenv("OPENAQ_API_V3_BASE_URL", "https://api.openaq.org/v3")
 PAGE_LIMIT = 1000  # API pagination size
 HEADERS = {'x-api-key': os.getenv("OPENAQ_API_KEY", "")}
 
@@ -32,16 +32,16 @@ HEADERS = {'x-api-key': os.getenv("OPENAQ_API_KEY", "")}
 spark.sql(f"CREATE DATABASE IF NOT EXISTS {DATABASE}")
 
 # Define bronze table schema
-BRONZE_SCHEMA = StructType([
+SCHEMA_BRONZE_TABLE_LOCATIONS = StructType([
     StructField("batch_id", StringType(), True),
     StructField("ingestion_time", StringType(), True),
     StructField("rows_fetched", IntegerType(), True),
     StructField("api_payload", StringType(), True)
 ])
 
-if not spark.catalog.tableExists(BRONZE_TABLE):
-    spark.createDataFrame([], BRONZE_SCHEMA).write.format("delta").mode("overwrite").saveAsTable(BRONZE_TABLE)
-    print(f"✅ Created empty Delta table: {BRONZE_TABLE}")
+if not spark.catalog.tableExists(BRONZE_TABLE_LOCATIONS):
+    spark.createDataFrame([], SCHEMA_BRONZE_TABLE_LOCATIONS).write.format("delta").mode("overwrite").saveAsTable(BRONZE_TABLE_LOCATIONS)
+    print(f"✅ Created empty Delta table: {BRONZE_TABLE_LOCATIONS}")
 
 # --------------------------------------
 # Helper: Fetch locations
@@ -53,7 +53,7 @@ def fetch_locations():
 
     while True:
         url = (
-            f"{OPENAQ_BASE}/locations"
+            f"{OPENAQ_API_BASE_URL}/locations"
         )
         headers = HEADERS
         params = {
@@ -99,10 +99,10 @@ row = (
             rows_fetched,
             json.dumps(locations)  # All locations as JSON array
         )
-df = spark.createDataFrame([row], BRONZE_SCHEMA)
-df.write.format("delta").mode("append").saveAsTable(BRONZE_TABLE)
+df = spark.createDataFrame([row], SCHEMA_BRONZE_TABLE_LOCATIONS)
+df.write.format("delta").mode("append").saveAsTable(BRONZE_TABLE_LOCATIONS)
 
-print(f"✅ Ingestion complete — 1 batch of {rows_fetched} locations written to {BRONZE_TABLE}")
+print(f"✅ Ingestion complete — 1 batch of {rows_fetched} locations written to {BRONZE_TABLE_LOCATIONS}")
 
 # Stop Spark session to avoid Python 3.13 threading cleanup warnings
 spark.stop()
