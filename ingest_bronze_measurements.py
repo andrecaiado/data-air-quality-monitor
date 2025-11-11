@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from pyspark.sql.types import *
 from pyspark.sql import functions as F
+import argparse
 
 # Load environment variables from .env file
 load_dotenv()
@@ -18,15 +19,26 @@ load_dotenv()
 spark = SparkSession.builder.appName("Ingest_Bronze_Measurements").getOrCreate()
 
 # --------------------------------------
-# Configurations
+# Country code input
+# --------------------------------------
+parser = argparse.ArgumentParser(description="Ingest OpenAQ measurements for sensors filtered by country.")
+parser.add_argument("--country", "--country_code", dest="country_code", help="ISO country code (e.g. PT, ES)")
+args, _ = parser.parse_known_args()
+COUNTRY_CODE = (args.country_code or os.getenv("COUNTRY_CODE") or "PT").upper()
+
+# --------------------------------------
+# Set database & table names
 # --------------------------------------
 DATABASE = os.getenv("DATABASE", "airq")
 BRONZE_TABLE_MEASUREMENTS = f"{DATABASE}.bronze_measurements_batches"
 DIM_TABLE_SENSORS = f"{DATABASE}.dim_sensors"
+
+# --------------------------------------
+# Set values for API calls
+# --------------------------------------
 OPENAQ_API_BASE_URL = os.getenv("OPENAQ_API_V3_BASE_URL", "https://api.openaq.org/v3")
 HOURS_BACK = 4  # Fetch last 4 hours of data
 PAGE_LIMIT = 1000  # API pagination size
-BBOX_PT = "-9.6,36.8,-6.0,42.2"  # roughly Portugal
 HEADERS = {'x-api-key': os.getenv("OPENAQ_API_KEY", "")}
 
 # --------------------------------------
@@ -36,10 +48,11 @@ spark.sql(f"CREATE DATABASE IF NOT EXISTS {DATABASE}")
 
 # Define bronze table schema
 SCHEMA_BRONZE_BRONZE_TABLE_MEASUREMENTS = StructType([
-    StructField("sensor_id", IntegerType(), True),
-    StructField("location_id", IntegerType(), True),
-    StructField("parameter_id", StringType(), True),
     StructField("batch_id", StringType(), True),
+    StructField("sensor_id", IntegerType(), True),
+    StructField("parameter_id", StringType(), True),
+    StructField("location_id", IntegerType(), True),
+    StructField("country_code", StringType(), True),
     StructField("ingestion_time", StringType(), True),
     StructField("date_from", StringType(), True),
     StructField("date_to", StringType(), True),
@@ -54,9 +67,10 @@ if not spark.catalog.tableExists(BRONZE_TABLE_MEASUREMENTS):
 # --------------------------------------
 # Function: Fetch last ingestion date_to
 # --------------------------------------
-def get_last_ingestion_date_to():
-    """Fetches the last ingestion date_to from the bronze table."""
+def get_last_ingestion_date_to(country_code):
+    """Fetches the last ingestion date_to from the bronze table for a specific country."""
     row = (spark.table(BRONZE_TABLE_MEASUREMENTS)
+                 .filter(F.col("country_code") == country_code)
                  .agg(F.max("date_to").alias("last_date_to"))
                  .collect()[0])
     val = row["last_date_to"]
@@ -67,7 +81,7 @@ def get_last_ingestion_date_to():
 # Define ingestion window
 # --------------------------------------
 date_to = datetime.now(timezone.utc)
-last_ingestion_date_to = get_last_ingestion_date_to()
+last_ingestion_date_to = get_last_ingestion_date_to(COUNTRY_CODE)
 date_from = last_ingestion_date_to if last_ingestion_date_to is not None else date_to - timedelta(hours=HOURS_BACK)
 
 print(f"📅 Fetching data from {date_from.isoformat()} to {date_to.isoformat()}")
@@ -116,18 +130,24 @@ def fetch_measurements(sensor_id, start, end):
     return results
 
 # --------------------------------------
-# Function: Fetch sensors
+# Function: Fetch sensors for a specific country
 # --------------------------------------
-def fetch_sensors():
-    """Fetches all sensors from the sensors bronze table."""
-    return (spark.table(DIM_TABLE_SENSORS)
-                 .select("sensor_id", "location_id", "parameter_id")
-                 .collect())
+def fetch_sensors(COUNTRY_CODE):
+    """Fetches sensors from the dimension table for a specific country."""
+    sensors_df = spark.table(DIM_TABLE_SENSORS).select("sensor_id", "location_id", "parameter_id")
+    locations_df = spark.table(f"{DATABASE}.dim_locations").select("location_id", "country_code")
+    
+    # Use inner if every sensor must have a valid location
+    joined = sensors_df.join(locations_df, on="location_id", how="inner") \
+                       .filter(F.col("country_code") == COUNTRY_CODE)
+    
+    total = joined.count()
+    return joined.toLocalIterator(), total
 
 # --------------------------------------
-# Step 1: Fetch sensors from dimension table
+# Step 1: Fetch sensors for the specified country
 # --------------------------------------
-sensors = fetch_sensors()
+sensor_iter, total_sensors = fetch_sensors(COUNTRY_CODE)
 
 # --------------------------------------
 # Step 2: Ingest measurements for each sensor into bronze table
@@ -136,11 +156,10 @@ batch_id = str(uuid.uuid4())
 ingestion_time = datetime.now(timezone.utc)
 
 total_rows = 0
-total_sensors = len(sensors)
-for idx, sensor_row in enumerate(sensors, start=1):
+for idx, sensor_row in enumerate(sensor_iter, start=1):
     sensor_id = sensor_row.sensor_id
     location_id = sensor_row.location_id
-    parameter = sensor_row.parameter_id
+    parameter_id = sensor_row.parameter_id
 
     print(f"\n🔍 Fetching data for sensor {sensor_id} ({idx} of {total_sensors})")
     measurements = fetch_measurements(sensor_id, date_from, date_to)
@@ -149,14 +168,15 @@ for idx, sensor_row in enumerate(sensors, start=1):
         continue
 
     rows_fetched = len(measurements)
-    print(f"➡️ Ingesting {rows_fetched} measurements for sensor {sensor_id} (location {location_id}, parameter {parameter})")
+    print(f"➡️ Ingesting {rows_fetched} measurements for sensor {sensor_id} (location {location_id}, parameter {parameter_id})")
 
     # Create single row with all measurements as JSON array
     row = (
-        sensor_id,
-        location_id,
-        parameter,
         batch_id,
+        sensor_id,
+        parameter_id,
+        location_id,
+        COUNTRY_CODE,
         ingestion_time.isoformat(),
         date_from.isoformat(),
         date_to.isoformat(),
