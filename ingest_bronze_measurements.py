@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from pyspark.sql.types import *
 from pyspark.sql import functions as F
 import argparse
+from databricks.connect import DatabricksSession
 
 # Load environment variables from .env file
 load_dotenv()
@@ -16,15 +17,23 @@ load_dotenv()
 # --------------------------------------
 # Spark setup
 # --------------------------------------
-spark = SparkSession.builder.appName("Ingest_Bronze_Measurements").getOrCreate()
+spark = DatabricksSession.builder.getOrCreate()
 
 # --------------------------------------
-# Country code input
+# Arguments input
 # --------------------------------------
-parser = argparse.ArgumentParser(description="Ingest OpenAQ measurements for sensors filtered by country.")
+parser = argparse.ArgumentParser(description="Ingest OpenAQ measurements for sensors filtered by country, with optional sharding.")
 parser.add_argument("--country", "--country_code", dest="country_code", help="ISO country code (e.g. PT, ES)")
+parser.add_argument("--shard-index", type=int, help="Zero-based shard index")
+parser.add_argument("--shard-count", type=int, help="Total number of shards")
 args, _ = parser.parse_known_args()
 COUNTRY_CODE = (args.country_code or os.getenv("COUNTRY_CODE") or "PT").upper()
+SHARD_INDEX = args.shard_index
+SHARD_COUNT = args.shard_count
+if (SHARD_INDEX is None) != (SHARD_COUNT is None):
+    raise SystemExit("Provide both --shard-index and --shard-count or neither.")
+if SHARD_COUNT is not None and (SHARD_INDEX < 0 or SHARD_INDEX >= SHARD_COUNT):
+    raise SystemExit("Invalid shard index.")
 
 # --------------------------------------
 # Set database & table names
@@ -141,6 +150,10 @@ def fetch_sensors(COUNTRY_CODE):
     joined = sensors_df.join(locations_df, on="location_id", how="inner") \
                        .filter(F.col("country_code") == COUNTRY_CODE)
     
+    if SHARD_COUNT is not None:
+        joined = joined.filter(F.col("sensor_id") % F.lit(SHARD_COUNT) == F.lit(SHARD_INDEX))
+        print(f"🔀 Shard {SHARD_INDEX}/{SHARD_COUNT} active.")
+
     total = joined.count()
     return joined.toLocalIterator(), total
 
