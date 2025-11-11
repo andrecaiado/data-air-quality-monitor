@@ -42,6 +42,12 @@ PAGE_LIMIT = 1000  # API pagination size
 HEADERS = {'x-api-key': os.getenv("OPENAQ_API_KEY", "")}
 
 # --------------------------------------
+# Set values for rate limiting
+RATE_LIMIT_PER_MIN = 60
+CONCURRENT_WORKERS = 1
+SAFETY_RATIO = 0.99
+
+# --------------------------------------
 # Create database & bronze table if missing
 # --------------------------------------
 spark.sql(f"CREATE DATABASE IF NOT EXISTS {DATABASE}")
@@ -87,6 +93,28 @@ date_from = last_ingestion_date_to if last_ingestion_date_to is not None else da
 print(f"📅 Fetching data from {date_from.isoformat()} to {date_to.isoformat()}")
 
 # --------------------------------------
+# Function: Compute sleep interval to avoid rate limiting while optimizing sleep time between requests
+# --------------------------------------
+def compute_sleep_interval(
+    rate_limit_per_min,
+    concurrent_workers,
+    safety_ratio,
+    avg_request_time_sec
+):
+    """
+    Compute seconds to sleep after an API call to stay below the rate limit.
+    rate_limit_per_min: allowed requests per minute (e.g. 60)
+    concurrent_workers: parallel processes hitting the same key
+    safety_ratio: use a fraction of the limit (0.9 = 90%)
+    avg_request_time_sec: elapsed HTTP time (r.elapsed.total_seconds())
+    """
+    effective_limit = rate_limit_per_min * safety_ratio
+    per_worker_limit = effective_limit / max(concurrent_workers, 1)
+    target_interval = 60.0 / per_worker_limit          # desired start-to-start spacing
+    used_time = avg_request_time_sec or 0.0             # time already spent in the request
+    return max(target_interval - used_time, 0.0)
+
+# --------------------------------------
 # Function: Fetch measurements
 # --------------------------------------
 def fetch_measurements(sensor_id, start, end):
@@ -103,10 +131,8 @@ def fetch_measurements(sensor_id, start, end):
             "limit": PAGE_LIMIT,
             "page": page,
             "datetime_from": start_formatted,
-            "datetime_to": end_formatted
+            "datetime_to": end_formatted/349/
         }
-
-        time.sleep(1.05)  # # added delay to be nice to the API and avoid rate limits
 
         r = requests.get(url, headers=headers, params=params)
         if r.status_code != 200:
@@ -115,6 +141,17 @@ def fetch_measurements(sensor_id, start, end):
         else:
             elapsed = r.elapsed.total_seconds()
             print(f"⏱️ Fetched page {page} for sensor {sensor_id} in {elapsed:.2f}s")
+
+        # Dynamic sleep before next page (or next sensor)
+        sleep_secs = compute_sleep_interval(
+            rate_limit_per_min=RATE_LIMIT_PER_MIN,
+            concurrent_workers=CONCURRENT_WORKERS,
+            safety_ratio=SAFETY_RATIO,
+            avg_request_time_sec=elapsed
+        )
+        if sleep_secs > 0:
+            print (f"💤 Sleeping for {sleep_secs:.2f}s to respect rate limits...")
+            time.sleep(sleep_secs)
 
         payload = r.json()
         data = payload.get("results", [])
@@ -145,6 +182,14 @@ def fetch_sensors(COUNTRY_CODE):
     return joined.toLocalIterator(), total
 
 # --------------------------------------
+# Helper: Format seconds as HH:MM:SS.ss
+# --------------------------------------
+def fmt_secs(s):
+    m, sec = divmod(s, 60)
+    h, m = divmod(m, 60)
+    return f"{int(h):02d}:{int(m):02d}:{sec:05.2f}"
+
+# --------------------------------------
 # Step 1: Fetch sensors for the specified country
 # --------------------------------------
 sensor_iter, total_sensors = fetch_sensors(COUNTRY_CODE)
@@ -155,6 +200,7 @@ sensor_iter, total_sensors = fetch_sensors(COUNTRY_CODE)
 batch_id = str(uuid.uuid4())
 ingestion_time = datetime.now(timezone.utc)
 
+step2_start = time.time()
 total_rows = 0
 for idx, sensor_row in enumerate(sensor_iter, start=1):
     sensor_id = sensor_row.sensor_id
@@ -188,7 +234,9 @@ for idx, sensor_row in enumerate(sensor_iter, start=1):
     df.write.format("delta").mode("append").saveAsTable(BRONZE_TABLE_MEASUREMENTS)
     total_rows += 1
 
+step2_elapsed = time.time() - step2_start
 print(f"✅ Ingestion complete — {total_rows} sensor batches written to {BRONZE_TABLE_MEASUREMENTS}")
+print(f"⏱️ Ingest step total duration: {fmt_secs(step2_elapsed)} ({step2_elapsed:.2f}s)")
 
 # Stop Spark session to avoid Python 3.13 threading cleanup warnings
 spark.stop()
