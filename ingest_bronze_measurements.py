@@ -7,6 +7,7 @@ from pyspark.sql import SparkSession
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from pyspark.sql.types import *
+from pyspark.sql import functions as F
 
 # Load environment variables from .env file
 load_dotenv()
@@ -21,6 +22,7 @@ spark = SparkSession.builder.appName("Ingest_Bronze_Measurements").getOrCreate()
 # --------------------------------------
 DATABASE = os.getenv("DATABASE", "airq")
 BRONZE_TABLE_MEASUREMENTS = f"{DATABASE}.bronze_measurements_batches"
+DIM_TABLE_SENSORS = f"{DATABASE}.dim_sensors"
 OPENAQ_API_BASE_URL = os.getenv("OPENAQ_API_V3_BASE_URL", "https://api.openaq.org/v3")
 HOURS_BACK = 4  # Fetch last 4 hours of data
 PAGE_LIMIT = 1000  # API pagination size
@@ -36,7 +38,7 @@ spark.sql(f"CREATE DATABASE IF NOT EXISTS {DATABASE}")
 SCHEMA_BRONZE_BRONZE_TABLE_MEASUREMENTS = StructType([
     StructField("sensor_id", IntegerType(), True),
     StructField("location_id", IntegerType(), True),
-    StructField("parameter", StringType(), True),
+    StructField("parameter_id", StringType(), True),
     StructField("batch_id", StringType(), True),
     StructField("ingestion_time", StringType(), True),
     StructField("date_from", StringType(), True),
@@ -50,29 +52,28 @@ if not spark.catalog.tableExists(BRONZE_TABLE_MEASUREMENTS):
     print(f"✅ Created empty Delta table: {BRONZE_TABLE_MEASUREMENTS}")
 
 # --------------------------------------
-# Helper: Fetch last ingestion date_to
+# Function: Fetch last ingestion date_to
 # --------------------------------------
 def get_last_ingestion_date_to():
     """Fetches the last ingestion date_to from the bronze table."""
-    df = spark.sql(f"""
-        SELECT MAX(date_to) AS last_date_to
-        FROM {BRONZE_TABLE_MEASUREMENTS}
-    """)
-    row = df.collect()[0]
-    if row and row['last_date_to']:
-        return datetime.fromisoformat(row['last_date_to'])
-    return None
+    row = (spark.table(BRONZE_TABLE_MEASUREMENTS)
+                 .agg(F.max("date_to").alias("last_date_to"))
+                 .collect()[0])
+    val = row["last_date_to"]
+
+    return datetime.fromisoformat(val) if val else None
 
 # --------------------------------------
 # Define ingestion window
 # --------------------------------------
 date_to = datetime.now(timezone.utc)
-date_from = get_last_ingestion_date_to() if get_last_ingestion_date_to() is not None else date_to - timedelta(hours=HOURS_BACK)
+last_ingestion_date_to = get_last_ingestion_date_to()
+date_from = last_ingestion_date_to if last_ingestion_date_to is not None else date_to - timedelta(hours=HOURS_BACK)
 
 print(f"📅 Fetching data from {date_from.isoformat()} to {date_to.isoformat()}")
 
 # --------------------------------------
-# Helper: Fetch paginated data
+# Function: Fetch measurements
 # --------------------------------------
 def fetch_measurements(sensor_id, start, end):
     """Fetches all measurements for a given sensor within a time window."""
@@ -82,14 +83,18 @@ def fetch_measurements(sensor_id, start, end):
     start_formatted = start.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     while True:
-        url = (
-            f"{OPENAQ_API_BASE_URL}/sensors/{sensor_id}/hours"
-            f"?limit={PAGE_LIMIT}&page={page}"
-            f"&datetime_from={start_formatted}&datetime_to={end_formatted}"
-        )
+        url = f"{OPENAQ_API_BASE_URL}/sensors/{sensor_id}/measurements"
         headers = HEADERS
+        params = {
+            "limit": PAGE_LIMIT,
+            "page": page,
+            "datetime_from": start_formatted,
+            "datetime_to": end_formatted
+        }
+
         time.sleep(1.05)  # # added delay to be nice to the API and avoid rate limits
-        r = requests.get(url, headers=headers)
+
+        r = requests.get(url, headers=headers, params=params)
         if r.status_code != 200:
             print(f"⚠️ Failed for sensor {sensor_id}: {r.status_code}")
             break
@@ -110,89 +115,58 @@ def fetch_measurements(sensor_id, start, end):
 
     return results
 
-def fetch_locations(bbox):
-    """Fetches all locations in a given bounding box."""
-    page = 1
-    results = []
-
-    while True:
-        url = (
-            f"{OPENAQ_API_BASE_URL}/locations"
-            f"?bbox={bbox}&limit={PAGE_LIMIT}&page={page}"
-        )
-        headers = HEADERS
-        time.sleep(1.05)  # added delay to be nice to the API and avoid rate limits
-        r = requests.get(url, headers=headers)
-        if r.status_code != 200:
-            print(f"⚠️ Failed to fetch locations for bbox {bbox}: {r.status_code}")
-            break
-
-        payload = r.json()
-        data = payload.get("results", [])
-        if not data:
-            break
-
-        results.extend(data)
-        if len(data) < PAGE_LIMIT:
-            break  # no more pages
-
-        page += 1
-
-    print(f"🔍 Fetched {len(results)} locations for bbox {bbox}")
-    return results
+# --------------------------------------
+# Function: Fetch sensors
+# --------------------------------------
+def fetch_sensors():
+    """Fetches all sensors from the sensors bronze table."""
+    return (spark.table(DIM_TABLE_SENSORS)
+                 .select("sensor_id", "location_id", "parameter_id")
+                 .collect())
 
 # --------------------------------------
-# Step 1: Fetch locations by bounding box
+# Step 1: Fetch sensors from dimension table
 # --------------------------------------
-locations = fetch_locations(BBOX_PT)
+sensors = fetch_sensors()
 
 # --------------------------------------
-# Step 2: Filter locations by country code PT
-# --------------------------------------
-locations_pt = [loc for loc in locations if loc.get("country", {}).get("code") == "PT"]
-sensors_pt_count = sum(len(loc.get("sensors", [])) for loc in locations_pt)
-print(f"🔍 Found {len(locations_pt)} locations in Portugal with {sensors_pt_count} sensors")
-
-# --------------------------------------
-# Step 3: Ingest per location per sensor
+# Step 2: Ingest measurements for each sensor into bronze table
 # --------------------------------------
 batch_id = str(uuid.uuid4())
 ingestion_time = datetime.now(timezone.utc)
-read_sensors = 0
 
 total_rows = 0
-read_sensors = 0
-for location in locations_pt:
-    for sensor in location.get("sensors", []):
-        sensor_id = sensor["id"]
-        location_id = location.get("id")
-        parameter = sensor.get("parameter", {}).get("name") if isinstance(sensor.get("parameter"), dict) else sensor.get("parameter")
+total_sensors = len(sensors)
+for idx, sensor_row in enumerate(sensors, start=1):
+    sensor_id = sensor_row.sensor_id
+    location_id = sensor_row.location_id
+    parameter = sensor_row.parameter_id
 
-        print(f"\n🔍 Fetching data for sensor {sensor_id} ({read_sensors + 1} of {sensors_pt_count})")
-        measurements = fetch_measurements(sensor_id, date_from, date_to)
-        read_sensors += 1
-        if not measurements:
-            continue
+    print(f"\n🔍 Fetching data for sensor {sensor_id} ({idx} of {total_sensors})")
+    measurements = fetch_measurements(sensor_id, date_from, date_to)
 
-        rows_fetched = len(measurements)
-        print(f"➡️ Ingesting {rows_fetched} measurements for sensor {sensor_id} (location {location_id}, parameter {parameter})")
+    if not measurements:
+        continue
 
-        # Create single row with all measurements as JSON array
-        row = (
-            sensor_id,
-            location_id,
-            parameter,
-            batch_id,
-            ingestion_time.isoformat(),
-            date_from.isoformat(),
-            date_to.isoformat(),
-            rows_fetched,
-            json.dumps(measurements)  # All measurements as JSON array
-        )
-        
-        df = spark.createDataFrame([row], SCHEMA_BRONZE_BRONZE_TABLE_MEASUREMENTS)
-        df.write.format("delta").mode("append").saveAsTable(BRONZE_TABLE_MEASUREMENTS)
-        total_rows += 1
+    rows_fetched = len(measurements)
+    print(f"➡️ Ingesting {rows_fetched} measurements for sensor {sensor_id} (location {location_id}, parameter {parameter})")
+
+    # Create single row with all measurements as JSON array
+    row = (
+        sensor_id,
+        location_id,
+        parameter,
+        batch_id,
+        ingestion_time.isoformat(),
+        date_from.isoformat(),
+        date_to.isoformat(),
+        rows_fetched,
+        json.dumps(measurements)  # All measurements as JSON array
+    )
+    
+    df = spark.createDataFrame([row], SCHEMA_BRONZE_BRONZE_TABLE_MEASUREMENTS)
+    df.write.format("delta").mode("append").saveAsTable(BRONZE_TABLE_MEASUREMENTS)
+    total_rows += 1
 
 print(f"✅ Ingestion complete — {total_rows} sensor batches written to {BRONZE_TABLE_MEASUREMENTS}")
 

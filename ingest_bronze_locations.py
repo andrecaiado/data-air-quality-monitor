@@ -44,7 +44,7 @@ if not spark.catalog.tableExists(BRONZE_TABLE_LOCATIONS):
     print(f"✅ Created empty Delta table: {BRONZE_TABLE_LOCATIONS}")
 
 # --------------------------------------
-# Helper: Fetch locations
+# Function: Fetch locations
 # --------------------------------------
 def fetch_locations():
     """Fetches all locations"""
