@@ -37,15 +37,22 @@ DIM_TABLE_SENSORS = f"{DATABASE}.dim_sensors"
 # Set values for API calls
 # --------------------------------------
 OPENAQ_API_BASE_URL = os.getenv("OPENAQ_API_V3_BASE_URL", "https://api.openaq.org/v3")
-HOURS_BACK = 4  # Fetch last 4 hours of data
 PAGE_LIMIT = 1000  # API pagination size
 HEADERS = {'x-api-key': os.getenv("OPENAQ_API_KEY", "")}
 
 # --------------------------------------
 # Set values for rate limiting
+# --------------------------------------
 RATE_LIMIT_PER_MIN = 60
 CONCURRENT_WORKERS = 1
 SAFETY_RATIO = 0.99
+
+# --------------------------------------
+# Set values for ingestion window
+# --------------------------------------
+MIN_LAG_HOURS = 2
+FIRST_RUN_HOURS = 4
+MAX_CHUNK_HOURS = 8
 
 # --------------------------------------
 # Create database & bronze table if missing
@@ -71,26 +78,65 @@ if not spark.catalog.tableExists(BRONZE_TABLE_MEASUREMENTS):
     print(f"✅ Created empty Delta table: {BRONZE_TABLE_MEASUREMENTS}")
 
 # --------------------------------------
-# Function: Fetch last ingestion date_to
+# Function: Fetch last ingestion window for a country
 # --------------------------------------
-def get_last_ingestion_date_to(country_code):
-    """Fetches the last ingestion date_to from the bronze table for a specific country."""
-    row = (spark.table(BRONZE_TABLE_MEASUREMENTS)
-                 .filter(F.col("country_code") == country_code)
-                 .agg(F.max("date_to").alias("last_date_to"))
-                 .collect()[0])
-    val = row["last_date_to"]
+def get_last_ingestion_window(country_code):
+    df = (spark.table(BRONZE_TABLE_MEASUREMENTS)
+              .filter(F.col("country_code") == country_code)
+              .orderBy(F.col("date_to").desc())
+              .limit(1))
+    if df.count() == 0:
+        return None, None
+    row = df.collect()[0]
+    last_date_from = row["date_from"]
+    last_date_to = row["date_to"]
+    return (datetime.fromisoformat(last_date_from) if last_date_from else None,
+            datetime.fromisoformat(last_date_to) if last_date_to else None)
 
-    return datetime.fromisoformat(val) if val else None
+# --------------------------------------
+# Function: Compute ingestion window
+# --------------------------------------
+def compute_ingestion_window(last_date_to_iso: str | None,
+                             now_utc: datetime,
+                             min_lag_hours: int,
+                             first_run_hours: int,
+                             max_chunk_hours: int):
+    """
+    Returns (window_from, window_to) respecting API constraint: window_to <= now - min_lag_hours.
+    last_date_to_iso: ISO string or None
+    """
+    end_cap = now_utc - timedelta(hours=min_lag_hours)
+
+    if last_date_to_iso is None:
+        window_to = end_cap
+        window_from = end_cap - timedelta(hours=first_run_hours)
+        return window_from, window_to
+
+    last_date_to = datetime.fromisoformat(last_date_to_iso)
+    if last_date_to >= end_cap:
+        return None, None  # up to date
+
+    gap_hours = (end_cap - last_date_to).total_seconds() / 3600.0
+    chunk_hours = min(gap_hours, max_chunk_hours)
+
+    window_from = last_date_to
+    window_to = last_date_to + timedelta(hours=chunk_hours)
+    if window_to > end_cap:
+        window_to = end_cap
+    return window_from, window_to
 
 # --------------------------------------
 # Define ingestion window
 # --------------------------------------
-date_to = datetime.now(timezone.utc)
-last_ingestion_date_to = get_last_ingestion_date_to(COUNTRY_CODE)
-date_from = last_ingestion_date_to if last_ingestion_date_to is not None else date_to - timedelta(hours=HOURS_BACK)
-
-print(f"📅 Fetching data from {date_from.isoformat()} to {date_to.isoformat()}")
+now_utc = datetime.now(timezone.utc)
+last_from, last_to = get_last_ingestion_window(COUNTRY_CODE)  # your existing function
+window = compute_ingestion_window(last_to.isoformat() if last_to else None, now_utc, MIN_LAG_HOURS, FIRST_RUN_HOURS, MAX_CHUNK_HOURS)
+if window == (None, None):
+    print("No ingestion needed (already up to date).")
+    exit(0)
+else:
+    date_from, date_to = window
+    print(f"Ingestion window: {date_from.isoformat()} -> {date_to.isoformat()}")
 
 # --------------------------------------
 # Function: Compute sleep interval to avoid rate limiting while optimizing sleep time between requests
@@ -117,12 +163,12 @@ def compute_sleep_interval(
 # --------------------------------------
 # Function: Fetch measurements
 # --------------------------------------
-def fetch_measurements(sensor_id, start, end):
+def fetch_measurements(sensor_id, date_from, date_to):
     """Fetches all measurements for a given sensor within a time window."""
     page = 1
     results = []
-    end_formatted = end.strftime("%Y-%m-%dT%H:%M:%SZ")
-    start_formatted = start.strftime("%Y-%m-%dT%H:%M:%SZ")
+    end_formatted = date_to.strftime("%Y-%m-%dT%H:%M:%SZ")
+    start_formatted = date_from.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     while True:
         url = f"{OPENAQ_API_BASE_URL}/sensors/{sensor_id}/measurements"
@@ -131,7 +177,7 @@ def fetch_measurements(sensor_id, start, end):
             "limit": PAGE_LIMIT,
             "page": page,
             "datetime_from": start_formatted,
-            "datetime_to": end_formatted/349/
+            "datetime_to": end_formatted
         }
 
         r = requests.get(url, headers=headers, params=params)
