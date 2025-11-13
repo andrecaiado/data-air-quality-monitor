@@ -1,0 +1,259 @@
+{
+  "datasets": [
+    {
+      "name": "abad16cd",
+      "displayName": "sensor_daily_completeness",
+      "queryLines": [
+        "-- Country + parameter daily trend\n",
+        "SELECT country_code, parameter_name, day_start, AVG(avg_value) AS country_daily_avg\n",
+        "FROM airq.sensor_daily_completeness\n",
+        "WHERE day_start >= date_sub(current_date, :lookback_days)\n",
+        "GROUP BY country_code, parameter_name, day_start\n",
+        "ORDER BY day_start;"
+      ],
+      "parameters": [
+        {
+          "displayName": "lookback_days",
+          "keyword": "lookback_days",
+          "dataType": "INTEGER",
+          "defaultSelection": {
+            "values": {
+              "dataType": "INTEGER",
+              "values": [
+                {
+                  "value": "30"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "d860f2ee",
+      "displayName": "kpis_daily_stats",
+      "layout": [
+        {
+          "widget": {
+            "name": "7297ae57",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "abad16cd",
+                  "fields": [
+                    {
+                      "name": "day_start",
+                      "expression": "`day_start`"
+                    },
+                    {
+                      "name": "country_daily_avg",
+                      "expression": "`country_daily_avg`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "day_start",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Day start"
+                },
+                "y": {
+                  "fieldName": "country_daily_avg",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Average value"
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "showDescription": false,
+                "title": "Average value of a sensor parameter"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "5425d646",
+            "queries": [
+              {
+                "name": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0b08600157b9df42f64b1a9ec62_country_code",
+                "query": {
+                  "datasetName": "abad16cd",
+                  "fields": [
+                    {
+                      "name": "country_code",
+                      "expression": "`country_code`"
+                    },
+                    {
+                      "name": "country_code_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "country_code",
+                    "queryName": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0b08600157b9df42f64b1a9ec62_country_code"
+                  }
+                ]
+              },
+              "disallowAll": true,
+              "frame": {
+                "showTitle": true,
+                "title": "Country code"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "718e9499",
+            "queries": [
+              {
+                "name": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0b08600157b9df42f64b1a9ec62_parameter_name",
+                "query": {
+                  "datasetName": "abad16cd",
+                  "fields": [
+                    {
+                      "name": "parameter_name",
+                      "expression": "`parameter_name`"
+                    },
+                    {
+                      "name": "parameter_name_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "parameter_name",
+                    "queryName": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0b08600157b9df42f64b1a9ec62_parameter_name"
+                  }
+                ]
+              },
+              "disallowAll": true,
+              "frame": {
+                "showTitle": true,
+                "title": "Parameter name"
+              },
+              "selection": {
+                "defaultSelection": {
+                  "values": {
+                    "dataType": "STRING",
+                    "values": [
+                      {
+                        "value": "no2"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 0,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "a803b712",
+            "queries": [
+              {
+                "name": "parameter_dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0b08600157b9df42f64b1a9ec62_lookback_days",
+                "query": {
+                  "datasetName": "abad16cd",
+                  "parameters": [
+                    {
+                      "name": "lookback_days",
+                      "keyword": "lookback_days"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "lookback_days",
+                    "queryName": "parameter_dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0b08600157b9df42f64b1a9ec62_lookback_days"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Lookback days"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 2,
+            "height": 1
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "24673743",
+      "displayName": "Global Filters",
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
