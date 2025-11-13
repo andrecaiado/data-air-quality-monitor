@@ -9,7 +9,7 @@ load_dotenv()
 # --------------------------------------
 # Spark setup
 # --------------------------------------
-spark = SparkSession.builder.appName("Build_Silver_Dimensions").getOrCreate()
+spark = SparkSession.builder.appName("Transform_Silver_Measurements").getOrCreate()
 
 # --------------------------------------
 # # Set database & table names
