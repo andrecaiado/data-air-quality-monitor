@@ -1,4 +1,3 @@
-# Load environment variables from .env file
 import json
 import os
 from dotenv import load_dotenv
@@ -13,7 +12,7 @@ load_dotenv()
 spark = SparkSession.builder.appName("Build_Silver_Dimensions").getOrCreate()
 
 # --------------------------------------
-# Configurations
+# Set database & table names
 # --------------------------------------
 DATABASE = os.getenv("DATABASE", "airq")
 BRONZE_TABLE_LOCATIONS = f"{DATABASE}.bronze_locations_snapshots"

@@ -18,10 +18,14 @@ load_dotenv()
 spark = SparkSession.builder.appName("Ingest_Bronze_Locations").getOrCreate()
 
 # --------------------------------------
-# Configurations
+# Set database & table names
 # --------------------------------------
 DATABASE = os.getenv("DATABASE", "airq")
 BRONZE_TABLE_LOCATIONS = f"{DATABASE}.bronze_locations_snapshots"
+
+# --------------------------------------
+# Set values for API calls
+# --------------------------------------
 OPENAQ_API_BASE_URL = os.getenv("OPENAQ_API_V3_BASE_URL", "https://api.openaq.org/v3")
 PAGE_LIMIT = 1000  # API pagination size
 HEADERS = {'x-api-key': os.getenv("OPENAQ_API_KEY", "")}

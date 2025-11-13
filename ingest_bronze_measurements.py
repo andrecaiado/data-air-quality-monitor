@@ -66,9 +66,9 @@ SCHEMA_BRONZE_BRONZE_TABLE_MEASUREMENTS = StructType([
     StructField("parameter_id", StringType(), True),
     StructField("location_id", IntegerType(), True),
     StructField("country_code", StringType(), True),
-    StructField("ingestion_time", StringType(), True),
-    StructField("date_from", StringType(), True),
-    StructField("date_to", StringType(), True),
+    StructField("ingestion_datetime", StringType(), True),
+    StructField("ingestion_window_datetime_from", StringType(), True),
+    StructField("ingestion_window_datetime_to", StringType(), True),
     StructField("rows_fetched", IntegerType(), True),
     StructField("api_payload", StringType(), True)
 ])
@@ -83,13 +83,13 @@ if not spark.catalog.tableExists(BRONZE_TABLE_MEASUREMENTS):
 def get_last_ingestion_window(country_code):
     df = (spark.table(BRONZE_TABLE_MEASUREMENTS)
               .filter(F.col("country_code") == country_code)
-              .orderBy(F.col("date_to").desc())
+              .orderBy(F.col("ingestion_window_datetime_to").desc())
               .limit(1))
     if df.count() == 0:
         return None, None
     row = df.collect()[0]
-    last_date_from = row["date_from"]
-    last_date_to = row["date_to"]
+    last_date_from = row["ingestion_window_datetime_from"]
+    last_date_to = row["ingestion_window_datetime_to"]
     return (datetime.fromisoformat(last_date_from) if last_date_from else None,
             datetime.fromisoformat(last_date_to) if last_date_to else None)
 
@@ -244,7 +244,7 @@ sensor_iter, total_sensors = fetch_sensors(COUNTRY_CODE)
 # Step 2: Ingest measurements for each sensor into bronze table
 # --------------------------------------
 batch_id = str(uuid.uuid4())
-ingestion_time = datetime.now(timezone.utc)
+ingestion_datetime = datetime.now(timezone.utc)
 
 step2_start = time.time()
 total_rows = 0
@@ -269,7 +269,7 @@ for idx, sensor_row in enumerate(sensor_iter, start=1):
         parameter_id,
         location_id,
         COUNTRY_CODE,
-        ingestion_time.isoformat(),
+        ingestion_datetime.isoformat(),
         date_from.isoformat(),
         date_to.isoformat(),
         rows_fetched,
