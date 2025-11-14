@@ -74,5 +74,3 @@ WHEN NOT MATCHED THEN INSERT *
 """)
 
 print("Gold daily aggregation complete.")
-
-spark.stop()

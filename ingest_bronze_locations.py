@@ -107,6 +107,3 @@ df = spark.createDataFrame([row], SCHEMA_BRONZE_TABLE_LOCATIONS)
 df.write.format("delta").mode("append").saveAsTable(BRONZE_TABLE_LOCATIONS)
 
 print(f"✅ Ingestion complete — 1 batch of {rows_fetched} locations written to {BRONZE_TABLE_LOCATIONS}")
-
-# Stop Spark session to avoid Python 3.13 threading cleanup warnings
-spark.stop()

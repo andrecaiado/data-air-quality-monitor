@@ -283,6 +283,3 @@ for idx, sensor_row in enumerate(sensor_iter, start=1):
 step2_elapsed = time.time() - step2_start
 print(f"✅ Ingestion complete — {total_rows} sensor batches written to {BRONZE_TABLE_MEASUREMENTS}")
 print(f"⏱️ Ingest step total duration: {fmt_secs(step2_elapsed)} ({step2_elapsed:.2f}s)")
-
-# Stop Spark session to avoid Python 3.13 threading cleanup warnings
-spark.stop()

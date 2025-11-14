@@ -182,5 +182,3 @@ WHEN NOT MATCHED THEN INSERT *
 """)
 
 print(f"✅ Merged measurements into fact table: {FACT_TABLE_MEASUREMENTS}")
-
-spark.stop()

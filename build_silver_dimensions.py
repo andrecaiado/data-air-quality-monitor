@@ -184,6 +184,3 @@ if sensor_rows:
     )
     """)
     print(f"✅ Upserted {len(sensor_rows)} sensors into {DIM_TABLE_SENSORS}")
-
-# Stop Spark session to avoid Python 3.13 threading cleanup warnings
-spark.stop()
