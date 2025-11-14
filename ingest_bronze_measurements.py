@@ -10,8 +10,16 @@ from pyspark.sql.types import *
 from pyspark.sql import functions as F
 import argparse
 
-# Load environment variables from .env file
+# --------------------------------------
+# Load environment variables and check requirements
+# --------------------------------------
 load_dotenv()
+
+# Check if required environment variables are set
+required_env_vars = ["OPENAQ_API_KEY"]
+missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+if missing_vars:
+    raise EnvironmentError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
 # --------------------------------------
 # Spark setup
