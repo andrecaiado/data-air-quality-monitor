@@ -1,6 +1,13 @@
 from pyspark.sql import SparkSession
 from dotenv import load_dotenv
 import os
+from pyspark.dbutils import DBUtils 
+
+# --------------------------------------
+# Spark setup and other initializations
+# --------------------------------------
+spark = SparkSession.builder.appName("Ingest_Bronze_Measurements").getOrCreate()
+dbutils = DBUtils(spark)
 
 # --------------------------------------
 # Load environment variables and check requirements
@@ -8,15 +15,11 @@ import os
 load_dotenv()
 
 # Check if required environment variables are set
+# Load env variables from .env file if it exists or from Databricks secrets
 required_env_vars = ["OPENAQ_API_KEY"]
-missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+missing_vars = [var for var in required_env_vars if not os.getenv(var) and not dbutils.secrets.get(scope="data-air-quality-monitor", key=var)]
 if missing_vars:
     raise EnvironmentError(f"Missing required environment variables: {', '.join(missing_vars)}")
-
-# --------------------------------------
-# Spark setup
-# --------------------------------------
-spark = SparkSession.builder.appName("Build_Gold_Measurements").getOrCreate()
 
 # --------------------------------------
 # # Set database & table names
