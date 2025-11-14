@@ -5,10 +5,11 @@
       "displayName": "sensor_daily_completeness",
       "queryLines": [
         "-- Country + parameter daily trend\n",
-        "SELECT country_code, parameter_name, day_start, AVG(avg_value) AS country_daily_avg\n",
-        "FROM airq.sensor_daily_completeness\n",
+        "SELECT sdc.country_code, location_id, loc.name, parameter_name, day_start, AVG(avg_value) AS country_daily_avg\n",
+        "FROM airq.sensor_daily_completeness AS sdc\n",
+        "LEFT JOIN airq.dim_locations loc USING (location_id)\n",
         "WHERE day_start >= date_sub(current_date, :lookback_days)\n",
-        "GROUP BY country_code, parameter_name, day_start\n",
+        "GROUP BY sdc.country_code, location_id, loc.name, parameter_name, day_start\n",
         "ORDER BY day_start;"
       ],
       "parameters": [
@@ -98,7 +99,7 @@
             "name": "5425d646",
             "queries": [
               {
-                "name": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0b08600157b9df42f64b1a9ec62_country_code",
+                "name": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0bbb67f1966bd70165823ded3b7_country_code",
                 "query": {
                   "datasetName": "abad16cd",
                   "fields": [
@@ -122,7 +123,7 @@
                 "fields": [
                   {
                     "fieldName": "country_code",
-                    "queryName": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0b08600157b9df42f64b1a9ec62_country_code"
+                    "queryName": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0bbb67f1966bd70165823ded3b7_country_code"
                   }
                 ]
               },
@@ -136,7 +137,7 @@
           "position": {
             "x": 0,
             "y": 0,
-            "width": 2,
+            "width": 1,
             "height": 1
           }
         },
@@ -193,7 +194,7 @@
             }
           },
           "position": {
-            "x": 2,
+            "x": 3,
             "y": 0,
             "width": 2,
             "height": 1
@@ -235,7 +236,54 @@
             }
           },
           "position": {
-            "x": 4,
+            "x": 5,
+            "y": 0,
+            "width": 1,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "ab664c6d",
+            "queries": [
+              {
+                "name": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0bbb67f1966bd70165823ded3b7_name",
+                "query": {
+                  "datasetName": "abad16cd",
+                  "fields": [
+                    {
+                      "name": "name",
+                      "expression": "`name`"
+                    },
+                    {
+                      "name": "name_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "name",
+                    "queryName": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0bbb67f1966bd70165823ded3b7_name"
+                  }
+                ]
+              },
+              "disallowAll": true,
+              "frame": {
+                "showTitle": true,
+                "title": "Location name"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
             "y": 0,
             "width": 2,
             "height": 1
