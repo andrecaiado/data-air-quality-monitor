@@ -21,13 +21,7 @@ dbutils = DBUtils(spark)
 # Load environment variables and check requirements
 # --------------------------------------
 load_dotenv()
-
-# Check if required environment variables are set
-# Load env variables from .env file if it exists or from Databricks secrets
-required_env_vars = ["OPENAQ_API_KEY"]
-missing_vars = [var for var in required_env_vars if not os.getenv(var) and not dbutils.secrets.get(scope="data-air-quality-monitor", key=var)]
-if missing_vars:
-    raise EnvironmentError(f"Missing required environment variables: {', '.join(missing_vars)}")
+OPENAQ_API_KEY = os.getenv("OPENAQ_API_KEY") or dbutils.secrets.get(scope="data-air-quality-monitor", key="OPENAQ_API_KEY")
 
 # --------------------------------------
 # Country code input
@@ -49,7 +43,7 @@ DIM_TABLE_SENSORS = f"{DATABASE}.dim_sensors"
 # --------------------------------------
 OPENAQ_API_BASE_URL = os.getenv("OPENAQ_API_V3_BASE_URL", "https://api.openaq.org/v3")
 PAGE_LIMIT = 1000  # API pagination size
-HEADERS = {'x-api-key': os.getenv("OPENAQ_API_KEY", "")}
+HEADERS = {'x-api-key': OPENAQ_API_KEY}
 
 # --------------------------------------
 # Set values for rate limiting
