@@ -31,6 +31,7 @@ parser = argparse.ArgumentParser(description="Ingest OpenAQ measurements for sen
 parser.add_argument("--country", "--country_code", dest="country_code", help="ISO country code (e.g. PT, ES)")
 args, _ = parser.parse_known_args()
 COUNTRY_CODE = (args.country_code or "PT").upper()
+print(f"Ingesting measurements for country code: {COUNTRY_CODE}")
 
 # --------------------------------------
 # Set database & table names
