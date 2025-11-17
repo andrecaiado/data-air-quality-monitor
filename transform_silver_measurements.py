@@ -3,7 +3,9 @@ from dotenv import load_dotenv
 import os
 from pyspark.sql.types import *
 from pyspark.sql import functions as F
-from pyspark.dbutils import DBUtils 
+from pyspark.dbutils import DBUtils
+
+from config.settings import get_config 
 
 # --------------------------------------
 # Spark setup and other initializations
