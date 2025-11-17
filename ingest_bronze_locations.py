@@ -8,7 +8,9 @@ from dotenv import load_dotenv
 from pyspark.sql import SparkSession
 from datetime import datetime, timezone
 from pyspark.sql.types import *
-from pyspark.dbutils import DBUtils 
+from pyspark.dbutils import DBUtils
+
+from config.settings import get_config 
 
 # --------------------------------------
 # Spark setup and other initializations
@@ -17,21 +19,20 @@ spark = SparkSession.builder.appName("Ingest_Bronze_Measurements").getOrCreate()
 dbutils = DBUtils(spark)
 
 # --------------------------------------
-# Load environment variables and check requirements
+# Load OPENAQ_API_KEY
 # --------------------------------------
-load_dotenv()
-OPENAQ_API_KEY = os.getenv("OPENAQ_API_KEY") or dbutils.secrets.get(scope="data-air-quality-monitor", key="OPENAQ_API_KEY")
+OPENAQ_API_KEY = get_config("OPENAQ_API_KEY", secret_scope="data-air-quality-monitor")
 
 # --------------------------------------
 # Set database & table names
 # --------------------------------------
-DATABASE = os.getenv("DATABASE", "airq")
+DATABASE = get_config("DATABASE")
 BRONZE_TABLE_LOCATIONS = f"{DATABASE}.bronze_locations_snapshots"
 
 # --------------------------------------
 # Set values for API calls
 # --------------------------------------
-OPENAQ_API_BASE_URL = os.getenv("OPENAQ_API_V3_BASE_URL", "https://api.openaq.org/v3")
+OPENAQ_API_BASE_URL = get_config("OPENAQ_API_V3_BASE_URL")
 PAGE_LIMIT = 1000  # API pagination size
 HEADERS = {'x-api-key': OPENAQ_API_KEY}
 

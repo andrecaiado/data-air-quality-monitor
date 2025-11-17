@@ -12,14 +12,9 @@ spark = SparkSession.builder.appName("Ingest_Bronze_Measurements").getOrCreate()
 dbutils = DBUtils(spark)
 
 # --------------------------------------
-# Load environment variables
-# --------------------------------------
-load_dotenv()
-
-# --------------------------------------
 # # Set database & table names
 # --------------------------------------
-DATABASE = os.getenv("DATABASE", "airq")
+DATABASE = get_config("DATABASE")
 BRONZE_TABLE_MEASUREMENTS = f"{DATABASE}.bronze_measurements_batches"
 STAGING_TABLE_MEASUREMENTS = f"{DATABASE}.silver_measurements_exploded"
 FACT_TABLE_MEASUREMENTS = f"{DATABASE}.fact_measurements"

@@ -3,7 +3,9 @@ import os
 from dotenv import load_dotenv
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
-from pyspark.dbutils import DBUtils 
+from pyspark.dbutils import DBUtils
+
+from config.settings import get_config 
 
 # --------------------------------------
 # Spark setup and other initializations
@@ -12,14 +14,9 @@ spark = SparkSession.builder.appName("Ingest_Bronze_Measurements").getOrCreate()
 dbutils = DBUtils(spark)
 
 # --------------------------------------
-# Load environment variables
-# --------------------------------------
-load_dotenv()
-
-# --------------------------------------
 # Set database & table names
 # --------------------------------------
-DATABASE = os.getenv("DATABASE", "airq")
+DATABASE = get_config("DATABASE")
 BRONZE_TABLE_LOCATIONS = f"{DATABASE}.bronze_locations_snapshots"
 DIM_TABLE_LOCATIONS = f"{DATABASE}.dim_locations"
 DIM_TABLE_SENSORS = f"{DATABASE}.dim_sensors"
