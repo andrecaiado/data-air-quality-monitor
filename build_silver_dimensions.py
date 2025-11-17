@@ -124,7 +124,6 @@ location_rows, sensor_rows = load_locations_and_sensors_from_bronze()
 # --------------------------------------
 if not location_rows:
     print("No locations to upsert.")
-    spark.stop()
     exit(0)
 
 df = spark.createDataFrame(location_rows, SCHEMA_DIM_TABLE_LOCATIONS)

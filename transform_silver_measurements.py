@@ -116,7 +116,6 @@ new_batches = (
 # If none, exit early
 if new_batches.count() == 0:
     print(f"No new batches from {BRONZE_TABLE_MEASUREMENTS} table to process.")
-    spark.stop()
     exit(0)
 
 staging_df = (
