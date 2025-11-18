@@ -1,0 +1,709 @@
+{
+  "datasets": [
+    {
+      "name": "abad16cd",
+      "displayName": "location_daily_trend",
+      "queryLines": [
+        "-- Location + parameter daily trend\n",
+        "SELECT sdc.country_code, location_id, loc.name as location_name, parameter_id, parameter_name, day_start, avg_value\n",
+        "FROM airq.sensor_daily_completeness AS sdc\n",
+        "LEFT JOIN airq.dim_locations loc USING (location_id)\n",
+        "WHERE day_start >= date_sub(current_date, :lookback_days)\n",
+        "GROUP BY sdc.country_code, location_id, loc.name, parameter_id, parameter_name, day_start, avg_value\n",
+        "ORDER BY day_start;"
+      ],
+      "parameters": [
+        {
+          "displayName": "lookback_days",
+          "keyword": "lookback_days",
+          "dataType": "INTEGER",
+          "defaultSelection": {
+            "values": {
+              "dataType": "INTEGER",
+              "values": [
+                {
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3365ea60",
+      "displayName": "data_completeness",
+      "queryLines": [
+        "-- Data completeness\n",
+        "SELECT\n",
+        "  AVG(completeness_ratio) AS completeness_percent, loc.name as location_name\n",
+        "FROM airq.sensor_daily_completeness\n",
+        "LEFT JOIN airq.dim_locations loc USING (location_id)\n",
+        "WHERE day_start >= date_sub(current_date(), :lookback_days)\n",
+        "GROUP BY location_name\n",
+        "ORDER BY completeness_percent DESC"
+      ],
+      "parameters": [
+        {
+          "displayName": "lookback_days",
+          "keyword": "lookback_days",
+          "dataType": "INTEGER",
+          "defaultSelection": {
+            "values": {
+              "dataType": "INTEGER",
+              "values": [
+                {
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "catalog": "workspace",
+      "schema": "airq"
+    }
+  ],
+  "pages": [
+    {
+      "name": "d860f2ee",
+      "displayName": "airq_daily_stats",
+      "layout": [
+        {
+          "widget": {
+            "name": "7297ae57",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "abad16cd",
+                  "fields": [
+                    {
+                      "name": "day_start",
+                      "expression": "`day_start`"
+                    },
+                    {
+                      "name": "avg(avg_value)",
+                      "expression": "AVG(`avg_value`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`parameter_id` IN (2)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "day_start",
+                  "displayName": "Date",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(avg_value)",
+                  "displayName": "Value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": "PM2.5 (µg/m³)",
+                "description": "Particulate matter less than 2.5 micrometers in diameter mass concentration"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "5425d646",
+            "queries": [
+              {
+                "name": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0bbb67f1966bd70165823ded3b7_country_code",
+                "query": {
+                  "datasetName": "abad16cd",
+                  "fields": [
+                    {
+                      "name": "country_code",
+                      "expression": "`country_code`"
+                    },
+                    {
+                      "name": "country_code_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "country_code",
+                    "queryName": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0bbb67f1966bd70165823ded3b7_country_code"
+                  }
+                ]
+              },
+              "disallowAll": true,
+              "frame": {
+                "showTitle": true,
+                "title": "Country code"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 1,
+            "width": 1,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "a803b712",
+            "queries": [
+              {
+                "name": "parameter_dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0bbb67f1966bd70165823ded3b7_lookback_days",
+                "query": {
+                  "datasetName": "abad16cd",
+                  "parameters": [
+                    {
+                      "name": "lookback_days",
+                      "keyword": "lookback_days"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c3c5636e159fbbd004bfea2b3885_lookback_days",
+                "query": {
+                  "datasetName": "3365ea60",
+                  "parameters": [
+                    {
+                      "name": "lookback_days",
+                      "keyword": "lookback_days"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "lookback_days",
+                    "queryName": "parameter_dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0bbb67f1966bd70165823ded3b7_lookback_days"
+                  },
+                  {
+                    "parameterName": "lookback_days",
+                    "queryName": "parameter_dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c3c5636e159fbbd004bfea2b3885_lookback_days"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Lookback days"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 1,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "ab664c6d",
+            "queries": [
+              {
+                "name": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0bbb67f1966bd70165823ded3b7_location_name",
+                "query": {
+                  "datasetName": "abad16cd",
+                  "fields": [
+                    {
+                      "name": "location_name",
+                      "expression": "`location_name`"
+                    },
+                    {
+                      "name": "location_name_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c3c5636e159fbbd004bfea2b3885_location_name",
+                "query": {
+                  "datasetName": "3365ea60",
+                  "fields": [
+                    {
+                      "name": "location_name",
+                      "expression": "`location_name`"
+                    },
+                    {
+                      "name": "location_name_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "location_name",
+                    "queryName": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0bbb67f1966bd70165823ded3b7_location_name"
+                  },
+                  {
+                    "fieldName": "location_name",
+                    "queryName": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c3c5636e159fbbd004bfea2b3885_location_name"
+                  }
+                ]
+              },
+              "disallowAll": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Location name"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 1,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "972eab9a",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Air quality daily average values"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 5,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "871175b7",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "3365ea60",
+                  "fields": [
+                    {
+                      "name": "avg(completeness_percent)",
+                      "expression": "AVG(`completeness_percent`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(completeness_percent)",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": "Data completeness",
+                "description": "Add description here"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "1b5b5936",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "abad16cd",
+                  "fields": [
+                    {
+                      "name": "day_start",
+                      "expression": "`day_start`"
+                    },
+                    {
+                      "name": "avg(avg_value)",
+                      "expression": "AVG(`avg_value`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`parameter_id` IN (5)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "day_start",
+                  "displayName": "Date",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(avg_value)",
+                  "displayName": "Value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": "NO₂ mass (µg/m³)",
+                "description": "Nitrogen Dioxide mass concentration"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 7,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "a9293335",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "abad16cd",
+                  "fields": [
+                    {
+                      "name": "day_start",
+                      "expression": "`day_start`"
+                    },
+                    {
+                      "name": "avg(avg_value)",
+                      "expression": "AVG(`avg_value`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`parameter_id` IN (3)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "day_start",
+                  "displayName": "Date",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(avg_value)",
+                  "displayName": "Value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": "O₃ mass (µg/m³)",
+                "description": "Ozone mass concentration"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "fc26d64d",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "abad16cd",
+                  "fields": [
+                    {
+                      "name": "day_start",
+                      "expression": "`day_start`"
+                    },
+                    {
+                      "name": "avg(avg_value)",
+                      "expression": "AVG(`avg_value`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`parameter_id` IN (1)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "day_start",
+                  "displayName": "Date",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(avg_value)",
+                  "displayName": "Value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": "PM10 (µg/m³)",
+                "description": "Particulate matter less than 10 micrometers in diameter mass concentration"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "e6dc37fa",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "abad16cd",
+                  "fields": [
+                    {
+                      "name": "day_start",
+                      "expression": "`day_start`"
+                    },
+                    {
+                      "name": "avg(avg_value)",
+                      "expression": "AVG(`avg_value`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`parameter_id` IN (6)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "day_start",
+                  "displayName": "Date",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(avg_value)",
+                  "displayName": "Value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": "SO₂ mass (µg/m³)",
+                "description": "Sulfur Dioxide mass concentration"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "87900a8f",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "abad16cd",
+                  "fields": [
+                    {
+                      "name": "day_start",
+                      "expression": "`day_start`"
+                    },
+                    {
+                      "name": "avg(avg_value)",
+                      "expression": "AVG(`avg_value`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`parameter_id` IN (8)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "day_start",
+                  "displayName": "Date",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(avg_value)",
+                  "displayName": "Value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": "CO (ppm)",
+                "description": "Carbon Monoxide concentration"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 11,
+            "width": 3,
+            "height": 4
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "24673743",
+      "displayName": "Global Filters",
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
