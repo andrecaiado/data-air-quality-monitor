@@ -54,7 +54,7 @@
         "LEFT JOIN airq.dim_locations loc USING (location_id)\n",
         "WHERE day_start >= date_sub(current_date(), :lookback_days)\n",
         "GROUP BY location_name\n",
-        "ORDER BY completeness_percent DESC"
+        "ORDER BY completeness_percent DESC;"
       ],
       "parameters": [
         {
@@ -131,7 +131,7 @@
                   "fields": [
                     {
                       "fieldName": "avg(avg_value)",
-                      "displayName": "Value"
+                      "displayName": "Average value"
                     },
                     {
                       "fieldName": "avg(max_limit)",
@@ -257,7 +257,7 @@
           "position": {
             "x": 1,
             "y": 1,
-            "width": 1,
+            "width": 2,
             "height": 1
           }
         },
@@ -382,9 +382,9 @@
             }
           },
           "position": {
-            "x": 2,
+            "x": 3,
             "y": 1,
-            "width": 3,
+            "width": 2,
             "height": 1
           }
         },
@@ -441,7 +441,7 @@
                 "showTitle": true,
                 "showDescription": true,
                 "title": "Data completeness",
-                "description": "Add description here"
+                "description": "Amount of hourly readings"
               }
             }
           },
@@ -501,7 +501,7 @@
                   "fields": [
                     {
                       "fieldName": "avg(avg_value)",
-                      "displayName": "Value"
+                      "displayName": "Average value"
                     },
                     {
                       "fieldName": "avg(max_limit)",
@@ -621,7 +621,7 @@
                   "fields": [
                     {
                       "fieldName": "avg(avg_value)",
-                      "displayName": "Value"
+                      "displayName": "Average value"
                     },
                     {
                       "fieldName": "avg(max_limit)",
@@ -741,7 +741,7 @@
                   "fields": [
                     {
                       "fieldName": "avg(avg_value)",
-                      "displayName": "Value"
+                      "displayName": "Average value"
                     },
                     {
                       "fieldName": "avg(max_limit)",
@@ -861,7 +861,7 @@
                   "fields": [
                     {
                       "fieldName": "avg(avg_value)",
-                      "displayName": "Value"
+                      "displayName": "Average value"
                     },
                     {
                       "fieldName": "sum(max_limit)",
@@ -981,7 +981,7 @@
                   "fields": [
                     {
                       "fieldName": "avg(avg_value)",
-                      "displayName": "Value"
+                      "displayName": "Average value"
                     },
                     {
                       "fieldName": "avg(max_limit)",
