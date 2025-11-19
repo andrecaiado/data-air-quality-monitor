@@ -75,6 +75,51 @@
       ],
       "catalog": "workspace",
       "schema": "airq"
+    },
+    {
+      "name": "e963ee19",
+      "displayName": "max_avg_values",
+      "queryLines": [
+        "SELECT parameter_id, parameter_name, avg_value AS max_avg_value, parameter_units, location_id, location_name\n",
+        "FROM (\n",
+        "    SELECT \n",
+        "        sdc.parameter_id,\n",
+        "        sdc.parameter_name,\n",
+        "        sdc.avg_value,\n",
+        "        s.parameter_units,\n",
+        "        sdc.location_id,\n",
+        "        loc.name as location_name,\n",
+        "        ROW_NUMBER() OVER (\n",
+        "            PARTITION BY sdc.parameter_name \n",
+        "            ORDER BY sdc.avg_value DESC\n",
+        "        ) AS rn\n",
+        "    FROM workspace.airq.sensor_daily_completeness sdc\n",
+        "    LEFT JOIN workspace.airq.dim_locations loc\n",
+        "        ON sdc.location_id = loc.location_id\n",
+        "    LEFT JOIN workspace.airq.dim_sensors s\n",
+        "        ON sdc.sensor_id = s.sensor_id\n",
+        "    WHERE sdc.day_start >= date_sub(current_date, :lookback_days)\n",
+        ") t\n",
+        "WHERE rn = 1\n",
+        "ORDER BY parameter_name ASC;"
+      ],
+      "parameters": [
+        {
+          "displayName": "lookback_days",
+          "keyword": "lookback_days",
+          "dataType": "INTEGER",
+          "defaultSelection": {
+            "values": {
+              "dataType": "INTEGER",
+              "values": [
+                {
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   ],
   "pages": [
@@ -197,8 +242,8 @@
           },
           "position": {
             "x": 0,
-            "y": 2,
-            "width": 3,
+            "y": 3,
+            "width": 2,
             "height": 5
           }
         },
@@ -257,7 +302,7 @@
           "position": {
             "x": 1,
             "y": 1,
-            "width": 2,
+            "width": 1,
             "height": 1
           }
         },
@@ -290,6 +335,19 @@
                   ],
                   "disaggregated": false
                 }
+              },
+              {
+                "name": "parameter_dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c556f3841176b963371ca2740d25_lookback_days",
+                "query": {
+                  "datasetName": "e963ee19",
+                  "parameters": [
+                    {
+                      "name": "lookback_days",
+                      "keyword": "lookback_days"
+                    }
+                  ],
+                  "disaggregated": false
+                }
               }
             ],
             "spec": {
@@ -304,6 +362,10 @@
                   {
                     "parameterName": "lookback_days",
                     "queryName": "parameter_dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c3c5636e159fbbd004bfea2b3885_lookback_days"
+                  },
+                  {
+                    "parameterName": "lookback_days",
+                    "queryName": "parameter_dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c556f3841176b963371ca2740d25_lookback_days"
                   }
                 ]
               },
@@ -382,8 +444,8 @@
             }
           },
           "position": {
-            "x": 3,
-            "y": 1,
+            "x": 0,
+            "y": 2,
             "width": 2,
             "height": 1
           }
@@ -393,14 +455,14 @@
             "name": "972eab9a",
             "multilineTextboxSpec": {
               "lines": [
-                "## Air quality daily average values"
+                "## Air quality daily values"
               ]
             }
           },
           "position": {
             "x": 0,
             "y": 0,
-            "width": 5,
+            "width": 6,
             "height": 1
           }
         },
@@ -446,9 +508,9 @@
             }
           },
           "position": {
-            "x": 5,
-            "y": 0,
-            "width": 1,
+            "x": 2,
+            "y": 1,
+            "width": 2,
             "height": 2
           }
         },
@@ -566,10 +628,10 @@
             }
           },
           "position": {
-            "x": 3,
-            "y": 7,
-            "width": 3,
-            "height": 4
+            "x": 2,
+            "y": 8,
+            "width": 2,
+            "height": 5
           }
         },
         {
@@ -687,9 +749,9 @@
           },
           "position": {
             "x": 0,
-            "y": 7,
-            "width": 3,
-            "height": 4
+            "y": 8,
+            "width": 2,
+            "height": 5
           }
         },
         {
@@ -806,9 +868,9 @@
             }
           },
           "position": {
-            "x": 3,
-            "y": 2,
-            "width": 3,
+            "x": 2,
+            "y": 3,
+            "width": 2,
             "height": 5
           }
         },
@@ -927,9 +989,9 @@
           },
           "position": {
             "x": 0,
-            "y": 11,
-            "width": 3,
-            "height": 4
+            "y": 13,
+            "width": 2,
+            "height": 5
           }
         },
         {
@@ -1046,10 +1108,226 @@
             }
           },
           "position": {
-            "x": 3,
-            "y": 11,
-            "width": 3,
-            "height": 4
+            "x": 2,
+            "y": 13,
+            "width": 2,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "f48f5c89",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "e963ee19",
+                  "fields": [
+                    {
+                      "name": "location_name",
+                      "expression": "`location_name`"
+                    },
+                    {
+                      "name": "max_avg_value",
+                      "expression": "`max_avg_value`"
+                    },
+                    {
+                      "name": "parameter_units",
+                      "expression": "`parameter_units`"
+                    },
+                    {
+                      "name": "parameter_name",
+                      "expression": "`parameter_name`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "location_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 1,
+                    "title": "Location",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "max_avg_value",
+                    "numberFormat": "0.00",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 2,
+                    "title": "Value",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "parameter_units",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 3,
+                    "title": "Units",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "parameter_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 5,
+                    "title": "Parameter",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  }
+                ]
+              },
+              "invisibleColumns": [
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "location_id",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 0,
+                  "title": "location_id",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "parameter_id",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 4,
+                  "title": "parameter_id",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 10,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": "Highest measurements",
+                "description": "All locations"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 1,
+            "width": 2,
+            "height": 7
           }
         }
       ],
