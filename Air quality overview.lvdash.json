@@ -4,12 +4,25 @@
       "name": "abad16cd",
       "displayName": "location_daily_trend",
       "queryLines": [
-        "-- Location + parameter daily trend\n",
-        "SELECT sdc.country_code, location_id, loc.name as location_name, parameter_id, parameter_name, day_start, avg_value\n",
+        "-- Location + parameter daily trend + max limit recommended\n",
+        "WITH max_recommended AS (\n",
+        "    SELECT *\n",
+        "    FROM (\n",
+        "        VALUES\n",
+        "            (2, 20),         -- PM2.5 (24h)\n",
+        "            (1, 45),         -- PM10 (24h)\n",
+        "            (3, 120),        -- Ozone (8h)\n",
+        "            (5, 50),         -- NO2 (24h)\n",
+        "            (6, 50),         -- SO2 (24h)\n",
+        "            (4, 4)           -- CO (24h) → 4 mg/m³ = 4000 µg/m³\n",
+        "    ) AS t(parameter_id, max_limit)\n",
+        ")\n",
+        "SELECT sdc.country_code, location_id, loc.name as location_name, parameter_id, parameter_name, day_start, avg_value, mr.max_limit AS max_limit\n",
         "FROM airq.sensor_daily_completeness AS sdc\n",
         "LEFT JOIN airq.dim_locations loc USING (location_id)\n",
+        "LEFT JOIN max_recommended mr USING (parameter_id)\n",
         "WHERE day_start >= date_sub(current_date, :lookback_days)\n",
-        "GROUP BY sdc.country_code, location_id, loc.name, parameter_id, parameter_name, day_start, avg_value\n",
+        "GROUP BY sdc.country_code, location_id, loc.name, parameter_id, parameter_name, day_start, avg_value, max_limit\n",
         "ORDER BY day_start;"
       ],
       "parameters": [
@@ -85,6 +98,10 @@
                     {
                       "name": "avg(avg_value)",
                       "expression": "AVG(`avg_value`)"
+                    },
+                    {
+                      "name": "avg(max_limit)",
+                      "expression": "AVG(`max_limit`)"
                     }
                   ],
                   "filters": [
@@ -108,11 +125,19 @@
                   }
                 },
                 "y": {
-                  "fieldName": "avg(avg_value)",
-                  "displayName": "Value",
                   "scale": {
                     "type": "quantitative"
-                  }
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "avg(avg_value)",
+                      "displayName": "Value"
+                    },
+                    {
+                      "fieldName": "avg(max_limit)",
+                      "displayName": "Limit"
+                    }
+                  ]
                 },
                 "label": {
                   "show": true
@@ -123,6 +148,50 @@
                 "showDescription": true,
                 "title": "PM2.5 (µg/m³)",
                 "description": "Particulate matter less than 2.5 micrometers in diameter mass concentration"
+              },
+              "mark": {
+                "colors": [
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 1
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
               }
             }
           },
@@ -170,6 +239,18 @@
               "frame": {
                 "showTitle": true,
                 "title": "Country code"
+              },
+              "selection": {
+                "defaultSelection": {
+                  "values": {
+                    "dataType": "STRING",
+                    "values": [
+                      {
+                        "value": "PT"
+                      }
+                    ]
+                  }
+                }
               }
             }
           },
@@ -387,6 +468,10 @@
                     {
                       "name": "avg(avg_value)",
                       "expression": "AVG(`avg_value`)"
+                    },
+                    {
+                      "name": "avg(max_limit)",
+                      "expression": "AVG(`max_limit`)"
                     }
                   ],
                   "filters": [
@@ -410,11 +495,19 @@
                   }
                 },
                 "y": {
-                  "fieldName": "avg(avg_value)",
-                  "displayName": "Value",
                   "scale": {
                     "type": "quantitative"
-                  }
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "avg(avg_value)",
+                      "displayName": "Value"
+                    },
+                    {
+                      "fieldName": "avg(max_limit)",
+                      "displayName": "Limit"
+                    }
+                  ]
                 },
                 "label": {
                   "show": true
@@ -425,6 +518,50 @@
                 "showDescription": true,
                 "title": "NO₂ mass (µg/m³)",
                 "description": "Nitrogen Dioxide mass concentration"
+              },
+              "mark": {
+                "colors": [
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 1
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
               }
             }
           },
@@ -451,6 +588,10 @@
                     {
                       "name": "avg(avg_value)",
                       "expression": "AVG(`avg_value`)"
+                    },
+                    {
+                      "name": "avg(max_limit)",
+                      "expression": "AVG(`max_limit`)"
                     }
                   ],
                   "filters": [
@@ -474,11 +615,19 @@
                   }
                 },
                 "y": {
-                  "fieldName": "avg(avg_value)",
-                  "displayName": "Value",
                   "scale": {
                     "type": "quantitative"
-                  }
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "avg(avg_value)",
+                      "displayName": "Value"
+                    },
+                    {
+                      "fieldName": "avg(max_limit)",
+                      "displayName": "Limit"
+                    }
+                  ]
                 },
                 "label": {
                   "show": true
@@ -489,6 +638,50 @@
                 "showDescription": true,
                 "title": "O₃ mass (µg/m³)",
                 "description": "Ozone mass concentration"
+              },
+              "mark": {
+                "colors": [
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 1
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
               }
             }
           },
@@ -515,6 +708,10 @@
                     {
                       "name": "avg(avg_value)",
                       "expression": "AVG(`avg_value`)"
+                    },
+                    {
+                      "name": "avg(max_limit)",
+                      "expression": "AVG(`max_limit`)"
                     }
                   ],
                   "filters": [
@@ -538,11 +735,19 @@
                   }
                 },
                 "y": {
-                  "fieldName": "avg(avg_value)",
-                  "displayName": "Value",
                   "scale": {
                     "type": "quantitative"
-                  }
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "avg(avg_value)",
+                      "displayName": "Value"
+                    },
+                    {
+                      "fieldName": "avg(max_limit)",
+                      "displayName": "Limit"
+                    }
+                  ]
                 },
                 "label": {
                   "show": true
@@ -553,6 +758,50 @@
                 "showDescription": true,
                 "title": "PM10 (µg/m³)",
                 "description": "Particulate matter less than 10 micrometers in diameter mass concentration"
+              },
+              "mark": {
+                "colors": [
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 1
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
               }
             }
           },
@@ -579,6 +828,10 @@
                     {
                       "name": "avg(avg_value)",
                       "expression": "AVG(`avg_value`)"
+                    },
+                    {
+                      "name": "sum(max_limit)",
+                      "expression": "SUM(`max_limit`)"
                     }
                   ],
                   "filters": [
@@ -602,11 +855,19 @@
                   }
                 },
                 "y": {
-                  "fieldName": "avg(avg_value)",
-                  "displayName": "Value",
                   "scale": {
                     "type": "quantitative"
-                  }
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "avg(avg_value)",
+                      "displayName": "Value"
+                    },
+                    {
+                      "fieldName": "sum(max_limit)",
+                      "displayName": "Limit"
+                    }
+                  ]
                 },
                 "label": {
                   "show": true
@@ -617,6 +878,50 @@
                 "showDescription": true,
                 "title": "SO₂ mass (µg/m³)",
                 "description": "Sulfur Dioxide mass concentration"
+              },
+              "mark": {
+                "colors": [
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 1
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
               }
             }
           },
@@ -643,11 +948,15 @@
                     {
                       "name": "avg(avg_value)",
                       "expression": "AVG(`avg_value`)"
+                    },
+                    {
+                      "name": "avg(max_limit)",
+                      "expression": "AVG(`max_limit`)"
                     }
                   ],
                   "filters": [
                     {
-                      "expression": "`parameter_id` IN (8)"
+                      "expression": "`parameter_id` IN (4)"
                     }
                   ],
                   "disaggregated": false
@@ -666,11 +975,19 @@
                   }
                 },
                 "y": {
-                  "fieldName": "avg(avg_value)",
-                  "displayName": "Value",
                   "scale": {
                     "type": "quantitative"
-                  }
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "avg(avg_value)",
+                      "displayName": "Value"
+                    },
+                    {
+                      "fieldName": "avg(max_limit)",
+                      "displayName": "Limit"
+                    }
+                  ]
                 },
                 "label": {
                   "show": true
@@ -679,8 +996,52 @@
               "frame": {
                 "showTitle": true,
                 "showDescription": true,
-                "title": "CO (ppm)",
-                "description": "Carbon Monoxide concentration"
+                "title": "CO mass (µg/m³)",
+                "description": "Carbon Monoxide mass concentration"
+              },
+              "mark": {
+                "colors": [
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 1
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
               }
             }
           },
