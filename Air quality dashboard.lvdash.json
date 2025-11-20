@@ -221,6 +221,36 @@
         "GROUP BY sdc.country_code, sdc.location_id, loc.name, sdc.parameter_id, sdc.parameter_name, s.parameter_units, day_start, avg_value, max_limit\n",
         "ORDER BY day_start;"
       ]
+    },
+    {
+      "name": "c1ff8f17",
+      "displayName": "locations_read",
+      "queryLines": [
+        "SELECT\n",
+        "  loc.name\n",
+        "FROM airq.sensor_daily_completeness sdc\n",
+        "LEFT JOIN workspace.airq.dim_locations loc\n",
+        "        ON sdc.location_id = loc.location_id\n",
+        "WHERE day_start >= date_sub(current_date(), :lookback_days)\n",
+        "group by loc.name"
+      ],
+      "parameters": [
+        {
+          "displayName": "lookback_days",
+          "keyword": "lookback_days",
+          "dataType": "INTEGER",
+          "defaultSelection": {
+            "values": {
+              "dataType": "INTEGER",
+              "values": [
+                {
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   ],
   "pages": [
@@ -445,7 +475,7 @@
           "position": {
             "x": 1,
             "y": 1,
-            "width": 1,
+            "width": 2,
             "height": 1
           }
         },
@@ -504,6 +534,19 @@
                   ],
                   "disaggregated": false
                 }
+              },
+              {
+                "name": "parameter_dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c626a1cc12bebcbb2127dd787aa8_lookback_days",
+                "query": {
+                  "datasetName": "c1ff8f17",
+                  "parameters": [
+                    {
+                      "name": "lookback_days",
+                      "keyword": "lookback_days"
+                    }
+                  ],
+                  "disaggregated": false
+                }
               }
             ],
             "spec": {
@@ -526,6 +569,10 @@
                   {
                     "parameterName": "lookback_days",
                     "queryName": "parameter_dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c5693e711c0f88f4cee62b292edb_lookback_days"
+                  },
+                  {
+                    "parameterName": "lookback_days",
+                    "queryName": "parameter_dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c626a1cc12bebcbb2127dd787aa8_lookback_days"
                   }
                 ]
               },
@@ -596,6 +643,23 @@
                   ],
                   "disaggregated": false
                 }
+              },
+              {
+                "name": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c626a1cc12bebcbb2127dd787aa8_name",
+                "query": {
+                  "datasetName": "c1ff8f17",
+                  "fields": [
+                    {
+                      "name": "name",
+                      "expression": "`name`"
+                    },
+                    {
+                      "name": "name_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
               }
             ],
             "spec": {
@@ -614,6 +678,10 @@
                   {
                     "fieldName": "location_name",
                     "queryName": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c5693e711c0f88f4cee62b292edb_location_name"
+                  },
+                  {
+                    "fieldName": "name",
+                    "queryName": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c626a1cc12bebcbb2127dd787aa8_name"
                   }
                 ]
               },
@@ -627,7 +695,7 @@
           "position": {
             "x": 0,
             "y": 2,
-            "width": 2,
+            "width": 3,
             "height": 1
           }
         },
@@ -689,9 +757,9 @@
             }
           },
           "position": {
-            "x": 2,
+            "x": 3,
             "y": 1,
-            "width": 2,
+            "width": 1,
             "height": 2
           }
         },
@@ -1682,14 +1750,14 @@
                 "showTitle": true,
                 "showDescription": true,
                 "title": "Sensors coverage",
-                "description": "Total sensors that provided readings"
+                "description": "Total sensors providing readings"
               }
             }
           },
           "position": {
             "x": 4,
             "y": 1,
-            "width": 2,
+            "width": 1,
             "height": 2
           }
         },
@@ -1987,6 +2055,47 @@
             "y": 13,
             "width": 3,
             "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "5b91a4f0",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c1ff8f17",
+                  "fields": [
+                    {
+                      "name": "count(*)",
+                      "expression": "COUNT(`*`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(*)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": "Locations coverage",
+                "description": "Total locations providing readings"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 1,
+            "width": 1,
+            "height": 2
           }
         }
       ],
