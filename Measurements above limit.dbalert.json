@@ -1,0 +1,45 @@
+{
+  "evaluation": {
+    "source": {
+      "name": "country_code",
+      "display": "country_code",
+      "aggregation": "COUNT"
+    },
+    "comparison_operator": "GREATER_THAN",
+    "threshold": {
+      "value": {
+        "double_value": 1.0
+      }
+    },
+    "empty_result_state": "OK",
+    "notification": {
+      "retrigger_seconds": 0,
+      "notify_on_ok": false
+    }
+  },
+  "schedule": {
+    "quartz_cron_schedule": "23 14 13/2 * * ?",
+    "timezone_id": "Europe/Lisbon"
+  },
+  "query_lines": [
+    "WITH max_recommended AS (",
+    "    SELECT *",
+    "    FROM (",
+    "        VALUES",
+    "            (2, 20),         -- PM2.5 (24h) µg/m³",
+    "            (1, 45),         -- PM10 (24h) µg/m³",
+    "            (3, 120),        -- Ozone (8h) µg/m³",
+    "            (5, 50),         -- NO2 (24h) µg/m³",
+    "            (6, 50),         -- SO2 (24h) µg/m³",
+    "            (4, 4000)        -- CO (24h) µg/m³",
+    "    ) AS t(parameter_id, max_limit)",
+    ")",
+    "SELECT sdc.country_code, location_id, loc.name as location_name, parameter_id, parameter_name, day_start, avg_value, mr.max_limit AS max_limit",
+    "FROM airq.sensor_daily_completeness AS sdc",
+    "LEFT JOIN airq.dim_locations loc USING (location_id)",
+    "LEFT JOIN max_recommended mr USING (parameter_id)",
+    "WHERE day_start = current_date() AND max_limit IS NOT NULL AND avg_value > max_limit",
+    "GROUP BY sdc.country_code, location_id, loc.name, parameter_id, parameter_name, day_start, avg_value, max_limit",
+    "ORDER BY day_start;"
+  ]
+}
