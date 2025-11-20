@@ -212,7 +212,7 @@
         "            (4, 4000)        -- CO (24h) µg/m³\n",
         "    ) AS t(parameter_id, max_limit)\n",
         ")\n",
-        "SELECT sdc.country_code, sdc.location_id, loc.name as location_name, sdc.parameter_id, sdc.parameter_name, s.parameter_units, day_start, avg_value, mr.max_limit AS max_limit, (avg_value - max_limit) / max_limit * 100 as above_limit\n",
+        "SELECT sdc.country_code, sdc.location_id, loc.name as location_name, sdc.parameter_id, sdc.parameter_name, s.parameter_units, day_start, avg_value, mr.max_limit AS max_limit, (avg_value - max_limit) / max_limit * 100 as perc_above_limit\n",
         "FROM airq.sensor_daily_completeness AS sdc\n",
         "LEFT JOIN airq.dim_locations loc USING (location_id)\n",
         "LEFT JOIN max_recommended mr USING (parameter_id)\n",
@@ -1321,8 +1321,8 @@
                       "expression": "`parameter_units`"
                     },
                     {
-                      "name": "above_limit",
-                      "expression": "`above_limit`"
+                      "name": "perc_above_limit",
+                      "expression": "`perc_above_limit`"
                     }
                   ],
                   "disaggregated": true
@@ -1440,8 +1440,8 @@
                     "preserveWhitespace": false
                   },
                   {
-                    "fieldName": "above_limit",
-                    "numberFormat": "0.0%",
+                    "fieldName": "perc_above_limit",
+                    "numberFormat": "0%",
                     "booleanValues": [
                       "false",
                       "true"
@@ -1472,8 +1472,8 @@
                       "rules": [
                         {
                           "if": {
-                            "column": "above_limit",
-                            "fn": ">",
+                            "column": "perc_above_limit",
+                            "fn": ">=",
                             "literal": "100"
                           },
                           "value": {
@@ -1485,8 +1485,8 @@
                         },
                         {
                           "if": {
-                            "column": "above_limit",
-                            "fn": ">",
+                            "column": "perc_above_limit",
+                            "fn": ">=",
                             "literal": "50"
                           },
                           "value": {
@@ -1497,8 +1497,7 @@
                           }
                         }
                       ]
-                    },
-                    "scalePercentBy100": false
+                    }
                   }
                 ]
               },
