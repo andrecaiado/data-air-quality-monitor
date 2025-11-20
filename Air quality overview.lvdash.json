@@ -80,7 +80,7 @@
       "name": "e963ee19",
       "displayName": "max_avg_values",
       "queryLines": [
-        "SELECT parameter_id, parameter_name, avg_value AS max_avg_value, parameter_units, location_id, location_name\n",
+        "SELECT parameter_id, parameter_name, avg_value AS max_avg_value, parameter_units, location_id, location_name, country_code\n",
         "FROM (\n",
         "    SELECT \n",
         "        sdc.parameter_id,\n",
@@ -89,6 +89,7 @@
         "        s.parameter_units,\n",
         "        sdc.location_id,\n",
         "        loc.name as location_name,\n",
+        "        sdc.country_code,\n",
         "        ROW_NUMBER() OVER (\n",
         "            PARTITION BY sdc.parameter_name \n",
         "            ORDER BY sdc.avg_value DESC\n",
@@ -111,6 +112,81 @@
           "defaultSelection": {
             "values": {
               "dataType": "INTEGER",
+              "values": [
+                {
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "9c5c395b",
+      "displayName": "sensors_read",
+      "queryLines": [
+        "SELECT\n",
+        "  loc.name as location_name, count(distinct sensor_id) sensors_read\n",
+        "FROM airq.sensor_daily_completeness sdc\n",
+        "LEFT JOIN workspace.airq.dim_locations loc\n",
+        "        ON sdc.location_id = loc.location_id\n",
+        "WHERE day_start >= date_sub(current_date(), :lookback_days)\n",
+        "group by location_name"
+      ],
+      "parameters": [
+        {
+          "displayName": "lookback_days",
+          "keyword": "lookback_days",
+          "dataType": "INTEGER",
+          "defaultSelection": {
+            "values": {
+              "dataType": "INTEGER",
+              "values": [
+                {
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "d95b2f36",
+      "displayName": "oldest_sensors_read",
+      "queryLines": [
+        "SELECT sensor_id, parameter_id, parameter_name, location_id, location_name, country_code, day_start, datediff(current_date(), day_start) as days_since_reading\n",
+        "FROM (\n",
+        "    SELECT \n",
+        "        sdc.sensor_id,\n",
+        "        sdc.parameter_id,\n",
+        "        sdc.parameter_name,\n",
+        "        sdc.location_id,\n",
+        "        loc.name as location_name,\n",
+        "        sdc.day_start,\n",
+        "        sdc.country_code,\n",
+        "        ROW_NUMBER() OVER (\n",
+        "            PARTITION BY sdc.sensor_id \n",
+        "            ORDER BY sdc.day_start DESC\n",
+        "        ) AS rn\n",
+        "    FROM workspace.airq.sensor_daily_completeness sdc\n",
+        "    LEFT JOIN workspace.airq.dim_locations loc\n",
+        "        ON sdc.location_id = loc.location_id\n",
+        "    WHERE sdc.day_start >= date_sub(current_date, :lookback_days)\n",
+        ") t\n",
+        "WHERE rn = 1\n",
+        "ORDER BY days_since_reading DESC\n",
+        "LIMIT 20;"
+      ],
+      "parameters": [
+        {
+          "displayName": "lookback_days",
+          "keyword": "lookback_days",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
               "values": [
                 {
                   "value": "10"
@@ -242,7 +318,7 @@
           },
           "position": {
             "x": 0,
-            "y": 3,
+            "y": 4,
             "width": 2,
             "height": 5
           }
@@ -267,6 +343,40 @@
                   ],
                   "disaggregated": false
                 }
+              },
+              {
+                "name": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c556f3841176b963371ca2740d25_country_code",
+                "query": {
+                  "datasetName": "e963ee19",
+                  "fields": [
+                    {
+                      "name": "country_code",
+                      "expression": "`country_code`"
+                    },
+                    {
+                      "name": "country_code_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c56c167e1dbc986eea1256bb1df4_country_code",
+                "query": {
+                  "datasetName": "d95b2f36",
+                  "fields": [
+                    {
+                      "name": "country_code",
+                      "expression": "`country_code`"
+                    },
+                    {
+                      "name": "country_code_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
               }
             ],
             "spec": {
@@ -277,6 +387,14 @@
                   {
                     "fieldName": "country_code",
                     "queryName": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c0bbb67f1966bd70165823ded3b7_country_code"
+                  },
+                  {
+                    "fieldName": "country_code",
+                    "queryName": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c556f3841176b963371ca2740d25_country_code"
+                  },
+                  {
+                    "fieldName": "country_code",
+                    "queryName": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c56c167e1dbc986eea1256bb1df4_country_code"
                   }
                 ]
               },
@@ -348,6 +466,19 @@
                   ],
                   "disaggregated": false
                 }
+              },
+              {
+                "name": "parameter_dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c5693e711c0f88f4cee62b292edb_lookback_days",
+                "query": {
+                  "datasetName": "9c5c395b",
+                  "parameters": [
+                    {
+                      "name": "lookback_days",
+                      "keyword": "lookback_days"
+                    }
+                  ],
+                  "disaggregated": false
+                }
               }
             ],
             "spec": {
@@ -366,6 +497,10 @@
                   {
                     "parameterName": "lookback_days",
                     "queryName": "parameter_dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c556f3841176b963371ca2740d25_lookback_days"
+                  },
+                  {
+                    "parameterName": "lookback_days",
+                    "queryName": "parameter_dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c5693e711c0f88f4cee62b292edb_lookback_days"
                   }
                 ]
               },
@@ -419,6 +554,23 @@
                   ],
                   "disaggregated": false
                 }
+              },
+              {
+                "name": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c5693e711c0f88f4cee62b292edb_location_name",
+                "query": {
+                  "datasetName": "9c5c395b",
+                  "fields": [
+                    {
+                      "name": "location_name",
+                      "expression": "`location_name`"
+                    },
+                    {
+                      "name": "location_name_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
               }
             ],
             "spec": {
@@ -433,6 +585,10 @@
                   {
                     "fieldName": "location_name",
                     "queryName": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c3c5636e159fbbd004bfea2b3885_location_name"
+                  },
+                  {
+                    "fieldName": "location_name",
+                    "queryName": "dashboards/01f0c0b06e5a1179a125f9ffddfb6cd0/datasets/01f0c5693e711c0f88f4cee62b292edb_location_name"
                   }
                 ]
               },
@@ -444,8 +600,8 @@
             }
           },
           "position": {
-            "x": 0,
-            "y": 2,
+            "x": 2,
+            "y": 1,
             "width": 2,
             "height": 1
           }
@@ -508,8 +664,8 @@
             }
           },
           "position": {
-            "x": 2,
-            "y": 1,
+            "x": 0,
+            "y": 2,
             "width": 2,
             "height": 2
           }
@@ -629,7 +785,7 @@
           },
           "position": {
             "x": 2,
-            "y": 8,
+            "y": 9,
             "width": 2,
             "height": 5
           }
@@ -749,7 +905,7 @@
           },
           "position": {
             "x": 0,
-            "y": 8,
+            "y": 9,
             "width": 2,
             "height": 5
           }
@@ -869,7 +1025,7 @@
           },
           "position": {
             "x": 2,
-            "y": 3,
+            "y": 4,
             "width": 2,
             "height": 5
           }
@@ -989,7 +1145,7 @@
           },
           "position": {
             "x": 0,
-            "y": 13,
+            "y": 14,
             "width": 2,
             "height": 5
           }
@@ -1109,7 +1265,7 @@
           },
           "position": {
             "x": 2,
-            "y": 13,
+            "y": 14,
             "width": 2,
             "height": 5
           }
@@ -1124,8 +1280,8 @@
                   "datasetName": "e963ee19",
                   "fields": [
                     {
-                      "name": "location_name",
-                      "expression": "`location_name`"
+                      "name": "parameter_name",
+                      "expression": "`parameter_name`"
                     },
                     {
                       "name": "max_avg_value",
@@ -1136,8 +1292,8 @@
                       "expression": "`parameter_units`"
                     },
                     {
-                      "name": "parameter_name",
-                      "expression": "`parameter_name`"
+                      "name": "location_name",
+                      "expression": "`location_name`"
                     }
                   ],
                   "disaggregated": true
@@ -1150,7 +1306,7 @@
               "encodings": {
                 "columns": [
                   {
-                    "fieldName": "location_name",
+                    "fieldName": "parameter_name",
                     "booleanValues": [
                       "false",
                       "true"
@@ -1166,8 +1322,8 @@
                     "type": "string",
                     "displayAs": "string",
                     "visible": true,
-                    "order": 1,
-                    "title": "Location",
+                    "order": 0,
+                    "title": "Parameter",
                     "allowSearch": false,
                     "alignContent": "left",
                     "allowHTML": false,
@@ -1193,7 +1349,7 @@
                     "type": "float",
                     "displayAs": "number",
                     "visible": true,
-                    "order": 2,
+                    "order": 1,
                     "title": "Value",
                     "allowSearch": false,
                     "alignContent": "right",
@@ -1219,7 +1375,7 @@
                     "type": "string",
                     "displayAs": "string",
                     "visible": true,
-                    "order": 3,
+                    "order": 2,
                     "title": "Units",
                     "allowSearch": false,
                     "alignContent": "left",
@@ -1229,7 +1385,7 @@
                     "preserveWhitespace": false
                   },
                   {
-                    "fieldName": "parameter_name",
+                    "fieldName": "location_name",
                     "booleanValues": [
                       "false",
                       "true"
@@ -1245,8 +1401,8 @@
                     "type": "string",
                     "displayAs": "string",
                     "visible": true,
-                    "order": 5,
-                    "title": "Parameter",
+                    "order": 4,
+                    "title": "Location",
                     "allowSearch": false,
                     "alignContent": "left",
                     "allowHTML": false,
@@ -1274,7 +1430,7 @@
                   "name": "location_id",
                   "type": "integer",
                   "displayAs": "number",
-                  "order": 0,
+                  "order": 3,
                   "title": "location_id",
                   "allowSearch": false,
                   "alignContent": "right",
@@ -1300,10 +1456,35 @@
                   "name": "parameter_id",
                   "type": "integer",
                   "displayAs": "number",
-                  "order": 4,
+                  "order": 5,
                   "title": "parameter_id",
                   "allowSearch": false,
                   "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "country_code",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 6,
+                  "title": "country_code",
+                  "allowSearch": false,
+                  "alignContent": "left",
                   "allowHTML": false,
                   "highlightLinks": false,
                   "useMonospaceFont": false,
@@ -1319,7 +1500,7 @@
                 "showTitle": true,
                 "showDescription": true,
                 "title": "Highest measurements",
-                "description": "All locations"
+                "description": "All locations for selected country code"
               }
             }
           },
@@ -1327,7 +1508,311 @@
             "x": 4,
             "y": 1,
             "width": 2,
-            "height": 7
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "6e3558ae",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "9c5c395b",
+                  "fields": [
+                    {
+                      "name": "sum(sensors_read)",
+                      "expression": "SUM(`sensors_read`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(sensors_read)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": "Sensors coverage",
+                "description": "Total sensors that provided readings"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "ddbae1ff",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d95b2f36",
+                  "fields": [
+                    {
+                      "name": "parameter_name",
+                      "expression": "`parameter_name`"
+                    },
+                    {
+                      "name": "location_name",
+                      "expression": "`location_name`"
+                    },
+                    {
+                      "name": "days_since_reading",
+                      "expression": "`days_since_reading`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "parameter_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 2,
+                    "title": "Parameter",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "location_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 4,
+                    "title": "Location",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  },
+                  {
+                    "fieldName": "days_since_reading",
+                    "numberFormat": "0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 7,
+                    "title": "Days since last reading",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false
+                  }
+                ]
+              },
+              "invisibleColumns": [
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "sensor_id",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 0,
+                  "title": "sensor_id",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "parameter_id",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 1,
+                  "title": "parameter_id",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "location_id",
+                  "type": "integer",
+                  "displayAs": "number",
+                  "order": 3,
+                  "title": "location_id",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "dateTimeFormat": "DD/MM/YYYY",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "day_start",
+                  "type": "date",
+                  "displayAs": "datetime",
+                  "order": 5,
+                  "title": "day_start",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "country_code",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 6,
+                  "title": "country_code",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 15,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": "Parameters/location with oldest readings",
+                "description": "All locations for selected country code"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 9,
+            "width": 2,
+            "height": 10
           }
         }
       ],
@@ -1342,6 +1827,9 @@
   "uiSettings": {
     "theme": {
       "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "genieSpace": {
+      "isEnabled": false
     },
     "applyModeEnabled": false
   }
