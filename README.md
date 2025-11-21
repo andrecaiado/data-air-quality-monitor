@@ -10,10 +10,8 @@ This project ingests data from OPENAQ Platform (https://openaq.org/) to monitor 
 - Alerting setup for monitoring air quality thresholds.
 
 ## Requirements
-- Databricks CLI installed and configured.
-- Access to a Databricks workspace.
+- Databricks account with necessary permissions to create resources in the workspace.
 - Python 3.7 or higher.
-- Necessary permissions to create resources in the Databricks workspace.
 - An OPENAQ API key (if required for extended access).
 - Some Databricks extension for your IDE (optional, for easier management).
   - For VSCode, you can use the "Databricks" extension by Databricks.
@@ -21,8 +19,17 @@ This project ingests data from OPENAQ Platform (https://openaq.org/) to monitor 
 ## Project Structure
 - `databricks.yml`: Configuration file for the Databricks Bundle.
 - `Air quality dashboard.lvdash.json`: Dashboard configuration file.
-- .env.template: Template for environment variables.
+- `.env.template`: Template for environment variables, to use for local development.
 - Other necessary scripts and configurations for data ingestion and processing.
+  - `ingest_bronze_locations.py`: Script to ingest locations data (from OPENAQ Platform).
+  - `build_silver_dimensions.py`: Script to extract locations and sensors data from bronze table and build silver dimension tables.
+  - `ingest_bronze_measurements.py`: Script to ingest measurement data (from OPENAQ Platform) into the bronze table.
+  - `transform_silver_measurements.py`: Script to transform measurement bronze data into silver tables.
+  - `build_gold_measurements.py`: Script to build the gold table with aggregated data for analysis and reporting.
+- `requirements.txt`: Project python dependencies. This is necessary so the `data_air_quality_monitor` job can install the required dependencies to execute the scripts in the Databricks environment.
+- `config/`: Directory containing files for configuration management.
+  - `config.json`: Configuration file to store parameters such as API endpoints, database names, and table names.
+  - `settings.py`: Python module to load and manage configuration settings.
 
 ## Setup Instructions for local development
 
@@ -30,7 +37,7 @@ To set up the project for local development, follow these steps:
 
 1. Clone the repository to your local machine:
    ```bash
-   git clone https://github.com/your-username/data-air-quality-monitor.git
+   git clone https://github.com/andrecaiado/data-air-quality-monitor.git
    cd data-air-quality-monitor
    ```
 2. Install the Databricks CLI if you haven't already:
@@ -52,7 +59,7 @@ To set up the project for local development, follow these steps:
    databricks-connect configure
    ```
 
-## Deploy the project 
+## Deploy the project to a Databricks workspace
 
 To deploy the project to a Databricks workspace, use the Databricks Bundle Configuration. The [databricks.yml](./databricks.yml) file contains the configuration for the Databricks Bundle, defining resources such as SQL warehouses, datasets, and dashboards.
 
@@ -63,18 +70,29 @@ The steps to deploy the project are as follows:
    databricks configure --host https://<your-databricks-workspace-url> --token
    ```
 
-2. Validate the bundle for the desired target environment:
+2. Create the scoped secret for the OPENAQ API key in your Databricks workspace (if applicable):
+   ```bash
+   databricks secrets create-scope --scope data-air-quality-monitor
+   databricks secrets put --scope data-air-quality-monitor --key OPENAQ_API_KEY
+   ```
+
+3. Install the Databricks Bundle CLI if you haven't already:
+   ```bash
+   pip install -U databricks-bundle
+   ```
+
+4. Validate the bundle for the desired target environment (e.g., `dev`):
 
    ```bash
    databricks bundle validate --target dev
    ```
 
-3. Deploy the bundle to the target environment:
+5. Deploy the bundle to the target environment (e.g., `dev`):
    ```bash
    databricks bundle deploy --target dev
    ```
 
-4. To destroy the deployed resources in the target environment:
+6. (Optional) To destroy the deployed resources in the target environment (e.g., `dev`):
    ```bash
    databricks bundle destroy --target dev
    ```
