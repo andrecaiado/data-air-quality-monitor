@@ -5,15 +5,64 @@
 bundle:
   name: data-air-quality-monitor
 
+variables:
+  name_prefix:
+    description: Resource name prefix per environment
+    default: dev
+  warehouse_id:
+    description: Default SQL warehouse for dashboards
+    default: de7e5c8d731cb9c4
+
 targets:
   dev:
     mode: development
     default: true
     workspace:
       host: https://dbc-42eed380-9a19.cloud.databricks.com
-
-  ## Optionally, there could be 'staging' or 'prod' targets here.
-  #
-  # prod:
-  #   workspace:
-  #     host: https://dbc-42eed380-9a19.cloud.databricks.com
+    variables:
+      name_prefix: dev
+resources:
+  jobs:
+    data_air_quality_monitor:
+      name: ${var.name_prefix}-data-air-quality-monitor
+      email_notifications:
+        on_failure:
+          - andrecaiado@gmail.com
+      schedule:
+        quartz_cron_expression: 0 0 0/2 * * ?
+        timezone_id: UTC
+        pause_status: UNPAUSED
+      tasks:
+        - task_key: Ingest_Bronze_Measurements
+          spark_python_task:
+            python_file: /Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/ingest_bronze_measurements.py
+            parameters:
+              - --country_code=PT
+          environment_key: Default
+        - task_key: Transform_Silver_Measurements
+          depends_on:
+            - task_key: Ingest_Bronze_Measurements
+          spark_python_task:
+            python_file: /Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/transform_silver_measurements.py
+          environment_key: Default
+        - task_key: Build_Gold_Measurements
+          depends_on:
+            - task_key: Transform_Silver_Measurements
+          spark_python_task:
+            python_file: /Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/build_gold_measurements.py
+          environment_key: Default
+      queue:
+        enabled: true
+      environments:
+        - environment_key: Default
+          spec:
+            dependencies:
+              - -r
+                /Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/requirements.txt
+            environment_version: "4"
+      performance_target: PERFORMANCE_OPTIMIZED
+  dashboards:
+    air_quality_dashboard:
+      display_name: Air Quality Dashboard
+      file_path: ./Air quality dashboard.lvdash.json
+      warehouse_id: ${var.warehouse_id}
