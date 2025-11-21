@@ -61,7 +61,7 @@ To set up the project for local development, follow these steps:
 
 ## Deploy the project to a Databricks workspace
 
-To deploy the project to a Databricks workspace, use the Databricks Bundle Configuration. The [databricks.yml](./databricks.yml) file contains the configuration for the Databricks Bundle, defining resources such as SQL warehouses, datasets, and dashboards.
+To deploy the project to a Databricks workspace, use the Databricks Bundle Configuration. The [databricks.yml](./databricks.yml) file contains the configuration for the Databricks Bundle, defining resources such as SQL warehouses, datasets, and dashboards. There is only one target environment defined: `dev`.
 
 The steps to deploy the project are as follows:
 
@@ -81,18 +81,18 @@ The steps to deploy the project are as follows:
    pip install -U databricks-bundle
    ```
 
-4. Validate the bundle for the desired target environment (e.g., `dev`):
+4. Validate the bundle for the `dev` target environment:
 
    ```bash
    databricks bundle validate --target dev
    ```
 
-5. Deploy the bundle to the target environment (e.g., `dev`):
+5. Deploy the bundle to the `dev` environment:
    ```bash
    databricks bundle deploy --target dev
    ```
 
-6. (Optional) To destroy the deployed resources in the target environment (e.g., `dev`):
+6. (Optional) To destroy the deployed resources in the `dev` environment:
    ```bash
    databricks bundle destroy --target dev
    ```
