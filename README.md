@@ -3,6 +3,9 @@ This project is a data air quality monitoring solution running in Databricks. It
 
 This project ingests data from OPENAQ Platform (https://openaq.org/) to monitor air quality metrics.
 
+> [!NOTE]
+> This project is designed to be deployed in Databricks Free Edition, which has certain limitations. As such, some configurations and paths have been adjusted accordingly.
+
 ## Features
 - Ingestion of air quality data from OPENAQ Platform.
 - Configuration of Databricks SQL warehouse for data processing.
@@ -61,7 +64,7 @@ To set up the project for local development, follow these steps:
 
 ## Deploy the project to a Databricks workspace
 
-To deploy the project to a Databricks workspace, use the Databricks Bundle Configuration. The [databricks.yml](./databricks.yml) file contains the configuration for the Databricks Bundle, defining resources such as SQL warehouses, datasets, and dashboards. There is only one target environment defined: `dev`.
+To deploy the project to a Databricks workspace, use the Databricks Bundle Configuration. The [databricks.yml](./databricks.yml) file contains the configuration for the Databricks Bundle, defining resources such as SQL warehouses, datasets, and dashboards. As the file only contains one target environment defined (`dev`), this deployment example will be targeting that environment.
 
 The steps to deploy the project are as follows:
 
@@ -76,23 +79,41 @@ The steps to deploy the project are as follows:
    databricks secrets put --scope data-air-quality-monitor --key OPENAQ_API_KEY
    ```
 
-3. Install the Databricks Bundle CLI if you haven't already:
+3. Create the configuration file in your Workspace:
+
+> [!NOTE] 
+> Pure JSON upload (raw) is not supported via workspace import on Free Edition. Converting to a Python source file avoids the format mismatch.
+
+   ```bash
+   echo 'CONFIG = {
+      "DATABASE": "airq.dev",
+      "OPENAQ_API_V3_BASE_URL": "https://api.openaq.org/v3"
+   }' > config_dev.py
+   databricks workspace mkdirs /Workspace/Users/<your-email>/data-air-quality-monitor
+   databricks workspace import /Workspace/Users/<your-email>/data-air-quality-monitor/config_dev.py \
+      --file config_dev.py \
+      --format SOURCE \
+      --language PYTHON \
+      --overwrite
+   ```
+
+4. Install the Databricks Bundle CLI if you haven't already:
    ```bash
    pip install -U databricks-bundle
    ```
 
-4. Validate the bundle for the `dev` target environment:
+5. Validate the bundle configuration:
 
    ```bash
    databricks bundle validate --target dev
    ```
 
-5. Deploy the bundle to the `dev` environment:
+6. Deploy the bundle:
    ```bash
    databricks bundle deploy --target dev
    ```
 
-6. (Optional) To destroy the deployed resources in the `dev` environment:
+7. (Optional) To destroy the deployed resources:
    ```bash
    databricks bundle destroy --target dev
    ```

@@ -1,6 +1,6 @@
 import os
 import sys
-import json
+import importlib.util
 
 # ---------------------------------------------------
 # Detect Databricks environment
@@ -16,31 +16,35 @@ except Exception:
     IS_DATABRICKS = False
 
 # ---------------------------------------------------
-# Optional CLI override for workspace config path
-#   --config_workspace_path /Workspace/Users/you/config.xxx.json
+# CLI override for config module path
+#   --config_file_path /Workspace/Users/<user>/data-air-quality-monitor/config_dev.py
 # ---------------------------------------------------
 def _cli_config_path():
     for i, tok in enumerate(sys.argv):
-        if tok in ("--config_workspace_path", "--config-path") and i + 1 < len(sys.argv):
+        if tok == "--config_file_path" and i + 1 < len(sys.argv):
             return sys.argv[i + 1].strip()
-        if tok.startswith("--config_workspace_path="):
-            return tok.split("=", 1)[1].strip()
-        if tok.startswith("--config-path="):
+        if tok.startswith("--config_file_path="):
             return tok.split("=", 1)[1].strip()
     return None
 
+CONFIG_MODULE_PATH = _cli_config_path()
+
 # ---------------------------------------------------
-# Load workspace JSON (semi‑sensitive, not in repo)
-# Precedence for path: CLI arg > ENV var CONFIG_WORKSPACE_PATH > default path
+# Load workspace Python module (expects CONFIG dict)
 # ---------------------------------------------------
 def load_workspace_config():
     if not IS_DATABRICKS:
         return {}
-    override = _cli_config_path() or os.getenv("CONFIG_WORKSPACE_PATH")
-    path = override or "/Workspace/Users/andrecaiado@gmail.com/config.data-air-quality-monitor.json"
+    path = CONFIG_MODULE_PATH
+    if not path:
+        return {}
+    if not os.path.exists(path):
+        return {}
     try:
-        with open(path, "r") as f:
-            return json.load(f)
+        spec = importlib.util.spec_from_file_location("external_config", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return getattr(mod, "CONFIG", {})
     except Exception:
         return {}
 

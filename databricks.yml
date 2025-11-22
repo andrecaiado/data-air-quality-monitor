@@ -27,7 +27,7 @@ resources:
       name: ${var.name_prefix}-data-air-quality-monitor
       email_notifications:
         on_failure:
-          - andrecaiado@gmail.com
+          - andrecaiado@gmail.com # Replace with your email
       schedule:
         quartz_cron_expression: 0 0 0/2 * * ?
         timezone_id: UTC
@@ -35,26 +35,26 @@ resources:
       tasks:
         - task_key: Ingest_Bronze_Measurements
           spark_python_task:
-            python_file: /Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/ingest_bronze_measurements.py
+            python_file: ingest_bronze_measurements.py
             parameters:
               - --country_code=PT
-              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/config.data-air-quality-monitor.${var.name_prefix}.json
+              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/config.${var.name_prefix}.json # Replace with your Databricks user account email
           environment_key: Default
         - task_key: Transform_Silver_Measurements
           depends_on:
             - task_key: Ingest_Bronze_Measurements
           spark_python_task:
-            python_file: /Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/transform_silver_measurements.py
+            python_file: transform_silver_measurements.py
             parameters:
-              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/config.data-air-quality-monitor.${var.name_prefix}.json
+              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/config.${var.name_prefix}.json # Replace with your Databricks user account email
           environment_key: Default
         - task_key: Build_Gold_Measurements
           depends_on:
             - task_key: Transform_Silver_Measurements
           spark_python_task:
-            python_file: /Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/build_gold_measurements.py
+            python_file: build_gold_measurements.py
             parameters:
-              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/config.data-air-quality-monitor.${var.name_prefix}.json
+              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/config.${var.name_prefix}.json # Replace with your Databricks user account email
           environment_key: Default
       queue:
         enabled: true
@@ -63,7 +63,7 @@ resources:
           spec:
             dependencies:
               - -r
-                /Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/requirements.txt
+                requirements.txt
             environment_version: "4"
       performance_target: PERFORMANCE_OPTIMIZED
   dashboards:
