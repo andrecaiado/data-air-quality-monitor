@@ -15,7 +15,7 @@ This project ingests data from OPENAQ Platform (https://openaq.org/) to monitor 
 ## Requirements
 - Databricks account with necessary permissions to create resources in the workspace.
 - Python 3.7 or higher.
-- An OPENAQ API key (if required for extended access).
+- An OPENAQ API key.
 - Some Databricks extension for your IDE (optional, for easier management).
   - For VSCode, you can use the "Databricks" extension by Databricks.
 
@@ -31,7 +31,6 @@ This project ingests data from OPENAQ Platform (https://openaq.org/) to monitor 
   - `build_gold_measurements.py`: Script to build the gold table with aggregated data for analysis and reporting.
 - `requirements.txt`: Project python dependencies. This is necessary so the `data_air_quality_monitor` job can install the required dependencies to execute the scripts in the Databricks environment.
 - `config/`: Directory containing files for configuration management.
-  - `config.json`: Configuration file to store parameters such as API endpoints, database names, and table names.
   - `settings.py`: Python module to load and manage configuration settings.
 
 ## Setup Instructions for local development
