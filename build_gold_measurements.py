@@ -1,6 +1,4 @@
 from pyspark.sql import SparkSession
-from dotenv import load_dotenv
-import os
 from pyspark.dbutils import DBUtils
 
 from config.settings import get_config 
@@ -8,13 +6,13 @@ from config.settings import get_config
 # --------------------------------------
 # Spark setup and other initializations
 # --------------------------------------
-spark = SparkSession.builder.appName("Ingest_Bronze_Measurements").getOrCreate()
+spark = SparkSession.builder.appName("Build_Gold_Measurements").getOrCreate()
 dbutils = DBUtils(spark)
 
 # --------------------------------------
 # # Set database & table names
 # --------------------------------------
-DATABASE = get_config("DATABASE")
+DATABASE = get_config("DATABASE", default="airq")
 FACT_TABLE = f"{DATABASE}.fact_measurements"
 DAILY_STATS_TABLE = f"{DATABASE}.sensor_daily_completeness"
 

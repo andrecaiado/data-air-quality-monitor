@@ -1,11 +1,9 @@
-import os
 import time
 import uuid
 import json
 import requests
 from pyspark.sql import SparkSession
 from datetime import datetime, timedelta, timezone
-from dotenv import load_dotenv
 from pyspark.sql.types import *
 from pyspark.sql import functions as F
 import argparse
@@ -36,14 +34,14 @@ print(f"Ingesting measurements for country code: {COUNTRY_CODE}")
 # --------------------------------------
 # Set database & table names
 # --------------------------------------
-DATABASE =  get_config("DATABASE")
+DATABASE =  get_config("DATABASE", default="airq")
 BRONZE_TABLE_MEASUREMENTS = f"{DATABASE}.bronze_measurements_batches"
 DIM_TABLE_SENSORS = f"{DATABASE}.dim_sensors"
 
 # --------------------------------------
 # Set values for API calls
 # --------------------------------------
-OPENAQ_API_BASE_URL = get_config("OPENAQ_API_V3_BASE_URL")
+OPENAQ_API_BASE_URL = get_config("OPENAQ_API_V3_BASE_URL", default="https://api.openaq.org/v3")
 PAGE_LIMIT = 1000  # API pagination size
 HEADERS = {'x-api-key': OPENAQ_API_KEY}
 

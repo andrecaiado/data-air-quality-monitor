@@ -38,18 +38,23 @@ resources:
             python_file: /Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/ingest_bronze_measurements.py
             parameters:
               - --country_code=PT
+              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/config.data-air-quality-monitor.${var.name_prefix}.json
           environment_key: Default
         - task_key: Transform_Silver_Measurements
           depends_on:
             - task_key: Ingest_Bronze_Measurements
           spark_python_task:
             python_file: /Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/transform_silver_measurements.py
+            parameters:
+              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/config.data-air-quality-monitor.${var.name_prefix}.json
           environment_key: Default
         - task_key: Build_Gold_Measurements
           depends_on:
             - task_key: Transform_Silver_Measurements
           spark_python_task:
             python_file: /Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/build_gold_measurements.py
+            parameters:
+              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/config.data-air-quality-monitor.${var.name_prefix}.json
           environment_key: Default
       queue:
         enabled: true

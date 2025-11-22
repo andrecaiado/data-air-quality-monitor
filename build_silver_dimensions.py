@@ -1,6 +1,4 @@
 import json
-import os
-from dotenv import load_dotenv
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 from pyspark.dbutils import DBUtils
@@ -10,13 +8,13 @@ from config.settings import get_config
 # --------------------------------------
 # Spark setup and other initializations
 # --------------------------------------
-spark = SparkSession.builder.appName("Ingest_Bronze_Measurements").getOrCreate()
+spark = SparkSession.builder.appName("Build_Silver_Dimensions").getOrCreate()
 dbutils = DBUtils(spark)
 
 # --------------------------------------
 # Set database & table names
 # --------------------------------------
-DATABASE = get_config("DATABASE")
+DATABASE = get_config("DATABASE", default="airq")
 BRONZE_TABLE_LOCATIONS = f"{DATABASE}.bronze_locations_snapshots"
 DIM_TABLE_LOCATIONS = f"{DATABASE}.dim_locations"
 DIM_TABLE_SENSORS = f"{DATABASE}.dim_sensors"

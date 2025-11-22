@@ -1,10 +1,8 @@
 import datetime
-import os
 import time
 import uuid
 import requests
 import json
-from dotenv import load_dotenv
 from pyspark.sql import SparkSession
 from datetime import datetime, timezone
 from pyspark.sql.types import *
@@ -15,7 +13,7 @@ from config.settings import get_config
 # --------------------------------------
 # Spark setup and other initializations
 # --------------------------------------
-spark = SparkSession.builder.appName("Ingest_Bronze_Measurements").getOrCreate()
+spark = SparkSession.builder.appName("Ingest_Bronze_Locations").getOrCreate()
 dbutils = DBUtils(spark)
 
 # --------------------------------------
@@ -26,13 +24,13 @@ OPENAQ_API_KEY = get_config("OPENAQ_API_KEY", secret_scope="data-air-quality-mon
 # --------------------------------------
 # Set database & table names
 # --------------------------------------
-DATABASE = get_config("DATABASE")
+DATABASE = get_config("DATABASE", default="airq")
 BRONZE_TABLE_LOCATIONS = f"{DATABASE}.bronze_locations_snapshots"
 
 # --------------------------------------
 # Set values for API calls
 # --------------------------------------
-OPENAQ_API_BASE_URL = get_config("OPENAQ_API_V3_BASE_URL")
+OPENAQ_API_BASE_URL = get_config("OPENAQ_API_V3_BASE_URL", default="https://api.openaq.org/v3")
 PAGE_LIMIT = 1000  # API pagination size
 HEADERS = {'x-api-key': OPENAQ_API_KEY}
 

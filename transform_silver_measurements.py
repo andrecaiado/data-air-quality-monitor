@@ -1,6 +1,4 @@
 from pyspark.sql import SparkSession
-from dotenv import load_dotenv
-import os
 from pyspark.sql.types import *
 from pyspark.sql import functions as F
 from pyspark.dbutils import DBUtils
@@ -10,13 +8,13 @@ from config.settings import get_config
 # --------------------------------------
 # Spark setup and other initializations
 # --------------------------------------
-spark = SparkSession.builder.appName("Ingest_Bronze_Measurements").getOrCreate()
+spark = SparkSession.builder.appName("Transform_Silver_Measurements").getOrCreate()
 dbutils = DBUtils(spark)
 
 # --------------------------------------
 # # Set database & table names
 # --------------------------------------
-DATABASE = get_config("DATABASE")
+DATABASE = get_config("DATABASE", default="airq")
 BRONZE_TABLE_MEASUREMENTS = f"{DATABASE}.bronze_measurements_batches"
 STAGING_TABLE_MEASUREMENTS = f"{DATABASE}.silver_measurements_exploded"
 FACT_TABLE_MEASUREMENTS = f"{DATABASE}.fact_measurements"

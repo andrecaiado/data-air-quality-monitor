@@ -1,86 +1,77 @@
-import json
 import os
-from pathlib import Path
+import sys
+import json
 
 # ---------------------------------------------------
 # Detect Databricks environment
 # ---------------------------------------------------
 try:
-    # dbutils exists only inside Databricks
     from pyspark.dbutils import DBUtils
     import pyspark
-    dbutils = DBUtils(pyspark.sql.SparkSession.builder.getOrCreate())
+    _spark = pyspark.sql.SparkSession.builder.getOrCreate()
+    dbutils = DBUtils(_spark)
     IS_DATABRICKS = True
 except Exception:
     dbutils = None
     IS_DATABRICKS = False
 
 # ---------------------------------------------------
-# Load non-sensitive defaults from repo
+# Optional CLI override for workspace config path
+#   --config_workspace_path /Workspace/Users/you/config.xxx.json
 # ---------------------------------------------------
-def load_default_config():
-    config_file = Path(__file__).parent / "config.json"
-    with open(config_file) as f:
-        return json.load(f)
-
-DEFAULT_CONFIG = load_default_config()
+def _cli_config_path():
+    for i, tok in enumerate(sys.argv):
+        if tok in ("--config_workspace_path", "--config-path") and i + 1 < len(sys.argv):
+            return sys.argv[i + 1].strip()
+        if tok.startswith("--config_workspace_path="):
+            return tok.split("=", 1)[1].strip()
+        if tok.startswith("--config-path="):
+            return tok.split("=", 1)[1].strip()
+    return None
 
 # ---------------------------------------------------
-# Load slightly-sensitive config from Databricks Workspace
+# Load workspace JSON (semi‑sensitive, not in repo)
+# Precedence for path: CLI arg > ENV var CONFIG_WORKSPACE_PATH > default path
 # ---------------------------------------------------
 def load_workspace_config():
     if not IS_DATABRICKS:
         return {}
-
-    # IMPORTANT: change this to your actual Databricks path
-    workspace_path = "/Workspace/Users/andrecaiado@gmail.com/config.data-air-quality-monitor.json"
-
+    override = _cli_config_path() or os.getenv("CONFIG_WORKSPACE_PATH")
+    path = override or "/Workspace/Users/andrecaiado@gmail.com/config.data-air-quality-monitor.json"
     try:
-        with open(workspace_path, "r") as f:
+        with open(path, "r") as f:
             return json.load(f)
-    except:
+    except Exception:
         return {}
 
 WORKSPACE_CONFIG = load_workspace_config()
 
 # ---------------------------------------------------
-# Load local .env only outside Databricks
+# Load local .env (only outside Databricks)
 # ---------------------------------------------------
 if not IS_DATABRICKS:
-    from dotenv import load_dotenv
-    load_dotenv()
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except Exception:
+        pass
 
 # ---------------------------------------------------
 # Unified config getter
+# Precedence:
+# 1. Secret scope (if provided)
+# 2. Workspace JSON (Databricks only)
+# 3. Environment variables (.env or exported)
+# 4. Explicit default
 # ---------------------------------------------------
 def get_config(key, default=None, secret_scope=None):
-    """
-    Order of precedence:
-    1. Databricks Secret Scope (sensitive values)
-    2. Workspace File (semi-sensitive, not in repo)
-    3. Environment variables (.env locally)
-    4. Repo defaults from config.json
-    5. Explicit default value
-    """
-
-    # 1 — Databricks secret (ONLY for sensitive values)
     if IS_DATABRICKS and secret_scope:
         try:
             return dbutils.secrets.get(scope=secret_scope, key=key)
-        except:
+        except Exception:
             pass
-
-    # 2 — Databricks workspace file
     if IS_DATABRICKS and key in WORKSPACE_CONFIG:
         return WORKSPACE_CONFIG[key]
-
-    # 3 — Environment variable (local .env or manual env vars)
     if key in os.environ:
         return os.environ[key]
-
-    # 4 — Repo non-sensitive defaults
-    if key in DEFAULT_CONFIG:
-        return DEFAULT_CONFIG[key]
-
-    # 5 — fallback default
     return default
