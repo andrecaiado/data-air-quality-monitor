@@ -73,7 +73,7 @@ The steps to deploy the project are as follows:
    databricks configure --host https://<your-databricks-workspace-url> --token
    ```
 
-2. Create the scoped secret for the OPENAQ API key in your Databricks workspace (if applicable):
+2. Create the scoped secret for the OPENAQ API key in your Databricks workspace:
    ```bash
    databricks secrets create-scope --scope data-air-quality-monitor
    databricks secrets put --scope data-air-quality-monitor --key OPENAQ_API_KEY
@@ -89,31 +89,38 @@ The steps to deploy the project are as follows:
       "DATABASE": "airq.dev",
       "OPENAQ_API_V3_BASE_URL": "https://api.openaq.org/v3"
    }' > config_dev.py
-   databricks workspace mkdirs /Workspace/Users/<your-email>/data-air-quality-monitor
-   databricks workspace import /Workspace/Users/<your-email>/data-air-quality-monitor/config_dev.py \
+   databricks workspace mkdirs /Workspace/Users/<your-email>/data-air-quality-monitor-config
+   databricks workspace import /Workspace/Users/<your-email>/data-air-quality-monitor-config/config_dev.py \
       --file config_dev.py \
       --format SOURCE \
       --language PYTHON \
       --overwrite
    ```
 
-4. Install the Databricks Bundle CLI if you haven't already:
+4. Create the Databricks SQL warehouse (if not already created):
+   ```bash
+   databricks sql warehouses create --name airq-dev --cluster-size 2X-Small --auto-stop-minutes 10
+   ```
+
+5. Update the `databricks.yml` file with your Databricks workspace URL, SQL warehouse ID, and your email in the script parameters.
+
+6. Install the Databricks Bundle CLI if you haven't already:
    ```bash
    pip install -U databricks-bundle
    ```
 
-5. Validate the bundle configuration:
+7. Validate the bundle configuration:
 
    ```bash
    databricks bundle validate --target dev
    ```
 
-6. Deploy the bundle:
+8. Deploy the bundle:
    ```bash
    databricks bundle deploy --target dev
    ```
 
-7. (Optional) To destroy the deployed resources:
+9. (Optional) To destroy the deployed resources:
    ```bash
    databricks bundle destroy --target dev
    ```

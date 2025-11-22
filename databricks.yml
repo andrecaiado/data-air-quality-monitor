@@ -11,16 +11,17 @@ variables:
     default: dev
   warehouse_id:
     description: Default SQL warehouse for dashboards
-    default: de7e5c8d731cb9c4
+    default: ""
 
 targets:
   dev:
     mode: development
     default: true
     workspace:
-      host: https://dbc-42eed380-9a19.cloud.databricks.com
+      host: https://dbc-42eed380-9a19.cloud.databricks.com # Replace with your Databricks workspace URL
     variables:
       name_prefix: dev
+      warehouse_id: de7e5c8d731cb9c4 # Replace with your Databricks SQL warehouse ID
 resources:
   jobs:
     data_air_quality_monitor:
