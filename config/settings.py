@@ -17,7 +17,6 @@ except Exception:
 
 # ---------------------------------------------------
 # CLI override for config module path
-#   --config_file_path /Workspace/Users/<user>/data-air-quality-monitor/config_dev.py
 # ---------------------------------------------------
 def _cli_config_path():
     for i, tok in enumerate(sys.argv):

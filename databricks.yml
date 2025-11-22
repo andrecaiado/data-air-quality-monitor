@@ -38,7 +38,7 @@ resources:
             python_file: ingest_bronze_measurements.py
             parameters:
               - --country_code=PT
-              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/config.${var.name_prefix}.json # Replace with your Databricks user account email
+              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor-config/config.${var.name_prefix}.py # Replace with your Databricks user account email
           environment_key: Default
         - task_key: Transform_Silver_Measurements
           depends_on:
@@ -46,7 +46,7 @@ resources:
           spark_python_task:
             python_file: transform_silver_measurements.py
             parameters:
-              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/config.${var.name_prefix}.json # Replace with your Databricks user account email
+              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor-config/config.${var.name_prefix}.py # Replace with your Databricks user account email
           environment_key: Default
         - task_key: Build_Gold_Measurements
           depends_on:
@@ -54,7 +54,7 @@ resources:
           spark_python_task:
             python_file: build_gold_measurements.py
             parameters:
-              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor/config.${var.name_prefix}.json # Replace with your Databricks user account email
+              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor-config/config.${var.name_prefix}.py # Replace with your Databricks user account email
           environment_key: Default
       queue:
         enabled: true
