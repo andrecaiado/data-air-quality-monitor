@@ -12,6 +12,9 @@ variables:
   warehouse_id:
     description: Default SQL warehouse for dashboards
     default: ""
+  config_file_path:
+    description: Path to the configuration file in Databricks workspace
+    default: /
 
 targets:
   dev:
@@ -22,10 +25,45 @@ targets:
     variables:
       name_prefix: dev
       warehouse_id: de7e5c8d731cb9c4 # Replace with your Databricks SQL warehouse ID
+      config_file_path: /Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor-config/config.dev.py # Replace with your Databricks user account email
 resources:
   jobs:
-    data_air_quality_monitor:
-      name: ${var.name_prefix}-data-air-quality-monitor
+    data_air_quality_monitor_dimensions:
+      name: ${var.name_prefix}-data-air-quality-monitor-dimensions
+      email_notifications:
+        on_failure:
+          - andrecaiado@gmail.com # Replace with your email
+      schedule:
+        quartz_cron_expression: 0 0 0 ? * MON # Weekly on mondays at 00:00 AM
+        timezone_id: UTC
+        pause_status: UNPAUSED
+      tasks:
+        - task_key: Ingest_Locations_and_Sensors
+          spark_python_task:
+            python_file: ingest_bronze_locations.py
+            parameters:
+              - --config_file_path=${var.config_file_path}
+          environment_key: Default
+        - task_key: Build_Silver_Dimensions
+          depends_on:
+            - task_key: Ingest_Locations_and_Sensors
+          spark_python_task:
+            python_file: build_silver_dimensions.py
+            parameters:
+              - --config_file_path=${var.config_file_path}
+          environment_key: Default
+      queue:
+        enabled: true
+      environments:
+        - environment_key: Default
+          spec:
+            dependencies:
+              - -r
+                requirements.txt
+            environment_version: "4"
+      performance_target: PERFORMANCE_OPTIMIZED
+    data_air_quality_monitor_facts:
+      name: ${var.name_prefix}-data-air-quality-monitor-facts
       email_notifications:
         on_failure:
           - andrecaiado@gmail.com # Replace with your email
@@ -39,7 +77,7 @@ resources:
             python_file: ingest_bronze_measurements.py
             parameters:
               - --country_code=PT
-              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor-config/config.${var.name_prefix}.py # Replace with your Databricks user account email
+              - --config_file_path=${var.config_file_path}
           environment_key: Default
         - task_key: Transform_Silver_Measurements
           depends_on:
@@ -47,7 +85,7 @@ resources:
           spark_python_task:
             python_file: transform_silver_measurements.py
             parameters:
-              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor-config/config.${var.name_prefix}.py # Replace with your Databricks user account email
+              - --config_file_path=${var.config_file_path}
           environment_key: Default
         - task_key: Build_Gold_Measurements
           depends_on:
@@ -55,7 +93,7 @@ resources:
           spark_python_task:
             python_file: build_gold_measurements.py
             parameters:
-              - --config_file_path=/Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor-config/config.${var.name_prefix}.py # Replace with your Databricks user account email
+              - --config_file_path=${var.config_file_path}
           environment_key: Default
       queue:
         enabled: true
