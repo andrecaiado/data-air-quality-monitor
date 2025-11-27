@@ -1,14 +1,13 @@
 import datetime
-import time
 import uuid
-import requests
+from pandas import DataFrame
 import json
 from pyspark.sql import SparkSession
 from datetime import datetime, timezone
 from pyspark.sql.types import *
 from pyspark.dbutils import DBUtils
 
-from config.settings import get_config 
+from config.settings import get_config
 
 # --------------------------------------
 # Spark setup and other initializations
@@ -17,22 +16,10 @@ spark = SparkSession.builder.appName("Ingest_Bronze_Locations").getOrCreate()
 dbutils = DBUtils(spark)
 
 # --------------------------------------
-# Load OPENAQ_API_KEY
-# --------------------------------------
-OPENAQ_API_KEY = get_config("OPENAQ_API_KEY", secret_scope="data-air-quality-monitor")
-
-# --------------------------------------
 # Set database & table names
 # --------------------------------------
 DATABASE = get_config("DATABASE", default="airq")
 BRONZE_TABLE_LOCATIONS = f"{DATABASE}.bronze_locations_snapshots"
-
-# --------------------------------------
-# Set values for API calls
-# --------------------------------------
-OPENAQ_API_BASE_URL = get_config("OPENAQ_API_V3_BASE_URL", default="https://api.openaq.org/v3")
-PAGE_LIMIT = 1000  # API pagination size
-HEADERS = {'x-api-key': OPENAQ_API_KEY}
 
 # --------------------------------------
 # Create database & bronze table if missing
@@ -54,58 +41,44 @@ if not spark.catalog.tableExists(BRONZE_TABLE_LOCATIONS):
 # --------------------------------------
 # Function: Fetch locations
 # --------------------------------------
-def fetch_locations():
-    """Fetches all locations"""
-    page = 1
-    results = []
+def fetch_locations() -> DataFrame:
+    """Fetches all locations using the OpenAqDatasource"""
+    from openaq_datasource import OpenAqDatasource
 
-    while True:
-        url = (
-            f"{OPENAQ_API_BASE_URL}/locations"
-        )
-        headers = HEADERS
-        params = {
-            "limit": PAGE_LIMIT,
-            "page": page,
-        }
-        
-        time.sleep(1.05)  # added delay to be nice to the API and avoid rate limits
+    options = {
+        "endpoint": "locations",
+        "headers": {},
+        "params": json.dumps({
+            "limit": 1000,
+        }),
+        "delayBetweenRequestsInSeconds": 1.05  # to avoid rate limits
+    }
 
-        r = requests.get(url, headers=headers, params=params)
-        if r.status_code != 200:
-            print(f"⚠️ Failed to fetch locations: {r.status_code}")
-            break
+    spark.dataSource.register(OpenAqDatasource)
+    results = (
+        spark.read.format("openaqdatasource")
+            .options(**options).load()
+    )
 
-        payload = r.json()
-        data = payload.get("results", [])
-        if not data:
-            break
-
-        results.extend(data)
-        if len(data) < PAGE_LIMIT:
-            break  # no more pages
-
-        page += 1
-
-    print(f"🔍 Fetched {len(results)} locations")
+    print(f"🔍 Fetched {results.count()} locations")
     return results
 
 # --------------------------------------
 # Step 1: Fetch locations
 # --------------------------------------
-locations = fetch_locations()
+locations_json_array = fetch_locations().toJSON().collect()
 
 # --------------------------------------
 # Step 2: Ingest locations into bronze table
 # --------------------------------------
 batch_id = str(uuid.uuid4())
 ingestion_time = datetime.now(timezone.utc)
-rows_fetched = len(locations)
+rows_fetched = len(locations_json_array)
 row = (
             batch_id,
             ingestion_time.isoformat(),
             rows_fetched,
-            json.dumps(locations)  # All locations as JSON array
+            json.dumps(locations_json_array)  # All locations as JSON array
         )
 df = spark.createDataFrame([row], SCHEMA_BRONZE_TABLE_LOCATIONS)
 df.write.format("delta").mode("append").saveAsTable(BRONZE_TABLE_LOCATIONS)
