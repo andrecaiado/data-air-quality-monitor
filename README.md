@@ -85,7 +85,7 @@ The steps to deploy the project are as follows:
 
    ```bash
    echo 'CONFIG = {
-      "DATABASE": "airq.dev",
+      "DATABASE": "dev_airq",
       "OPENAQ_API_V3_BASE_URL": "https://api.openaq.org/v3"
    }' > config_dev.py
    databricks workspace mkdirs /Workspace/Users/<your-email>/data-air-quality-monitor-config
