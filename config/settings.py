@@ -35,16 +35,19 @@ def load_workspace_config():
     if not IS_DATABRICKS:
         return {}
     path = CONFIG_MODULE_PATH
+
     if not path:
-        return {}
-    if not os.path.exists(path):
         return {}
     try:
         spec = importlib.util.spec_from_file_location("external_config", path)
+        if spec is None or spec.loader is None:
+            print(f"⚠️ Cannot load spec from: {path}")
+            return {}
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         return getattr(mod, "CONFIG", {})
-    except Exception:
+    except Exception as e:
+        print(f"❌ Failed to load config: {e}")
         return {}
 
 WORKSPACE_CONFIG = load_workspace_config()

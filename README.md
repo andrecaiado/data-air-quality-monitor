@@ -84,13 +84,15 @@ The steps to deploy the project are as follows:
 > [!NOTE] 
 > Pure JSON upload (raw) is not supported via workspace import on Free Edition. Converting to a Python source file avoids the format mismatch.
 
+> [!IMPORTANT] Don't add the `.py` extension to the file name when imported to the workspace. Setting the format to `SOURCE` and language to `PYTHON` ensures that the file is treated as a Python source file. Adding the `.py` extension to the file name in the workspace would result in a duplicate extension (e.g., `config_dev.py.py`), which can lead to import errors.
+
    ```bash
    echo 'CONFIG = {
       "DATABASE": "dev_airq",
       "OPENAQ_API_V3_BASE_URL": "https://api.openaq.org/v3"
    }' > config_dev.py
    databricks workspace mkdirs /Workspace/Users/<your-email>/data-air-quality-monitor-config
-   databricks workspace import /Workspace/Users/<your-email>/data-air-quality-monitor-config/config_dev.py \
+   databricks workspace import /Workspace/Users/<your-email>/data-air-quality-monitor-config/config_dev \
       --file config_dev.py \
       --format SOURCE \
       --language PYTHON \
