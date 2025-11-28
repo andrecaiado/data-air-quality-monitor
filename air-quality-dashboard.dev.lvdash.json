@@ -18,8 +18,8 @@
         "    ) AS t(parameter_id, max_limit)\n",
         ")\n",
         "SELECT sdc.country_code, location_id, loc.name as location_name, parameter_id, parameter_name, day_start, avg_value, mr.max_limit AS max_limit\n",
-        "FROM airq.sensor_daily_completeness AS sdc\n",
-        "LEFT JOIN airq.dim_locations loc USING (location_id)\n",
+        "FROM dev_airq.sensor_daily_completeness AS sdc\n",
+        "LEFT JOIN dev_airq.dim_locations loc USING (location_id)\n",
         "LEFT JOIN max_recommended mr USING (parameter_id)\n",
         "WHERE day_start >= date_sub(current_date, :lookback_days)\n",
         "GROUP BY sdc.country_code, location_id, loc.name, parameter_id, parameter_name, day_start, avg_value, max_limit\n",
@@ -50,8 +50,8 @@
         "-- Data completeness\n",
         "SELECT\n",
         "  AVG(completeness_ratio) AS completeness_percent, loc.name as location_name\n",
-        "FROM airq.sensor_daily_completeness\n",
-        "LEFT JOIN airq.dim_locations loc USING (location_id)\n",
+        "FROM dev_airq.sensor_daily_completeness\n",
+        "LEFT JOIN dev_airq.dim_locations loc USING (location_id)\n",
         "WHERE day_start >= date_sub(current_date(), :lookback_days)\n",
         "GROUP BY location_name\n",
         "ORDER BY completeness_percent DESC;"
@@ -72,9 +72,7 @@
             }
           }
         }
-      ],
-      "catalog": "workspace",
-      "schema": "airq"
+      ]
     },
     {
       "name": "e963ee19",
@@ -94,10 +92,10 @@
         "            PARTITION BY sdc.parameter_name \n",
         "            ORDER BY sdc.avg_value DESC\n",
         "        ) AS rn\n",
-        "    FROM workspace.airq.sensor_daily_completeness sdc\n",
-        "    LEFT JOIN workspace.airq.dim_locations loc\n",
+        "    FROM dev_airq.sensor_daily_completeness sdc\n",
+        "    LEFT JOIN dev_airq.dim_locations loc\n",
         "        ON sdc.location_id = loc.location_id\n",
-        "    LEFT JOIN workspace.airq.dim_sensors s\n",
+        "    LEFT JOIN dev_airq.dim_sensors s\n",
         "        ON sdc.sensor_id = s.sensor_id\n",
         "    WHERE sdc.day_start >= date_sub(current_date, :lookback_days)\n",
         ") t\n",
@@ -128,8 +126,8 @@
       "queryLines": [
         "SELECT\n",
         "  loc.name as location_name, count(distinct sensor_id) sensors_read\n",
-        "FROM airq.sensor_daily_completeness sdc\n",
-        "LEFT JOIN workspace.airq.dim_locations loc\n",
+        "FROM dev_airq.sensor_daily_completeness sdc\n",
+        "LEFT JOIN dev_airq.dim_locations loc\n",
         "        ON sdc.location_id = loc.location_id\n",
         "WHERE day_start >= date_sub(current_date(), :lookback_days)\n",
         "group by location_name"
@@ -170,8 +168,8 @@
         "            PARTITION BY sdc.sensor_id \n",
         "            ORDER BY sdc.day_start DESC\n",
         "        ) AS rn\n",
-        "    FROM workspace.airq.sensor_daily_completeness sdc\n",
-        "    LEFT JOIN workspace.airq.dim_locations loc\n",
+        "    FROM dev_airq.sensor_daily_completeness sdc\n",
+        "    LEFT JOIN dev_airq.dim_locations loc\n",
         "        ON sdc.location_id = loc.location_id\n",
         "    WHERE sdc.day_start >= date_sub(current_date, :lookback_days)\n",
         ") t\n",
@@ -213,10 +211,10 @@
         "    ) AS t(parameter_id, max_limit)\n",
         ")\n",
         "SELECT sdc.country_code, sdc.location_id, loc.name as location_name, sdc.parameter_id, sdc.parameter_name, s.parameter_units, day_start, avg_value, mr.max_limit AS max_limit, (avg_value - max_limit) / max_limit * 100 as perc_above_limit\n",
-        "FROM airq.sensor_daily_completeness AS sdc\n",
-        "LEFT JOIN airq.dim_locations loc USING (location_id)\n",
+        "FROM dev_airq.sensor_daily_completeness AS sdc\n",
+        "LEFT JOIN dev_airq.dim_locations loc USING (location_id)\n",
         "LEFT JOIN max_recommended mr USING (parameter_id)\n",
-        "LEFT JOIN workspace.airq.dim_sensors s ON sdc.sensor_id = s.sensor_id\n",
+        "LEFT JOIN dev_airq.dim_sensors s ON sdc.sensor_id = s.sensor_id\n",
         "WHERE day_start = current_date() AND max_limit IS NOT NULL AND avg_value > max_limit\n",
         "GROUP BY sdc.country_code, sdc.location_id, loc.name, sdc.parameter_id, sdc.parameter_name, s.parameter_units, day_start, avg_value, max_limit\n",
         "ORDER BY day_start;"
@@ -228,8 +226,8 @@
       "queryLines": [
         "SELECT\n",
         "  loc.name\n",
-        "FROM airq.sensor_daily_completeness sdc\n",
-        "LEFT JOIN workspace.airq.dim_locations loc\n",
+        "FROM dev_airq.sensor_daily_completeness sdc\n",
+        "LEFT JOIN dev_airq.dim_locations loc\n",
         "        ON sdc.location_id = loc.location_id\n",
         "WHERE day_start >= date_sub(current_date(), :lookback_days)\n",
         "group by loc.name"

@@ -12,9 +12,12 @@ variables:
   warehouse_id:
     description: Default SQL warehouse for dashboards
     default: ""
+  workspace_user:
+    description: Workspace user email for config file location
+    default: andrecaiado@gmail.com # Replace with your Databricks user account email
   config_file_path:
     description: Path to the configuration file in Databricks workspace
-    default: /
+    default: /Workspace/Users/${var.workspace_user}/data-air-quality-monitor-config/config_dev.py
 
 targets:
   dev:
@@ -25,14 +28,21 @@ targets:
     variables:
       name_prefix: dev
       warehouse_id: de7e5c8d731cb9c4 # Replace with your Databricks SQL warehouse ID
-      config_file_path: /Workspace/Users/andrecaiado@gmail.com/data-air-quality-monitor-config/config.dev.py # Replace with your Databricks user account email
+      workspace_user: andrecaiado@gmail.com # Replace with your Databricks user account email
+      config_file_path: /Workspace/Users/${var.workspace_user}/data-air-quality-monitor-config/config_dev.py # Replace with your Databricks user account email
+    resources:    
+      dashboards:
+        air_quality_dashboard:
+          display_name: Air Quality Dashboard
+          file_path: ./air-quality-dashboard.dev.lvdash.json
+          warehouse_id: ${var.warehouse_id}
 resources:
   jobs:
     data_air_quality_monitor_dimensions:
       name: ${var.name_prefix}-data-air-quality-monitor-dimensions
       email_notifications:
         on_failure:
-          - andrecaiado@gmail.com # Replace with your email
+          - ${var.workspace_user}
       schedule:
         quartz_cron_expression: 0 0 0 ? * MON # Weekly on mondays at 00:00 AM
         timezone_id: UTC
@@ -66,7 +76,7 @@ resources:
       name: ${var.name_prefix}-data-air-quality-monitor-facts
       email_notifications:
         on_failure:
-          - andrecaiado@gmail.com # Replace with your email
+          - ${var.workspace_user}
       schedule:
         quartz_cron_expression: 0 0 0/2 * * ?
         timezone_id: UTC
@@ -105,8 +115,3 @@ resources:
                 requirements.txt
             environment_version: "4"
       performance_target: PERFORMANCE_OPTIMIZED
-  dashboards:
-    air_quality_dashboard:
-      display_name: Air Quality Dashboard
-      file_path: ./Air quality dashboard.lvdash.json
-      warehouse_id: ${var.warehouse_id}
