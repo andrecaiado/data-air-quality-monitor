@@ -21,7 +21,8 @@ This project ingests data from OPENAQ Platform (https://openaq.org/) to monitor 
 
 ## Project Structure
 - `databricks.yml`: Configuration file for the Databricks Bundle.
-- `Air quality dashboard.lvdash.json`: Dashboard configuration file.
+- `air-quality-dashboard.dev.lvdash.json`: Dashboard configuration file for the development environment.
+- `measurements-above-limit.dev.dbalert.json`: Alert configuration file for the development environment. This file is not being deployed by the Databricks Bundle and so, it must be managed separately.
 - `.env.template`: Template for environment variables, to use for local development.
 - Other necessary scripts and configurations for data ingestion and processing.
   - `ingest_bronze_locations.py`: Script to ingest locations data (from OPENAQ Platform).
